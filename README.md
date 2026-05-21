@@ -168,37 +168,50 @@ env\Scripts\activate        # Windows
 pip install -r requirements.txt
 ```
 
-### Dataset Setup
+### Dataset
 
-1. Download the dataset from [Kaggle — Jigsaw Toxic Comment Classification](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data).
-2. Extract the downloaded archive.
-3. Place `train.csv` and `test.csv` inside the `data/` directory:
+The training data (`data/train.csv` and `data/test.csv`) is included in the repository. No separate download is required — simply clone the repo and you're ready to go.
 
-```
-data/
-├── train.csv
-└── test.csv
-```
+> **Source:** [Kaggle — Jigsaw Toxic Comment Classification](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data)
 
-### Training (Google Colab)
+### Training (Google Colab — Recommended)
 
-Training the model on Google Colab is recommended for free GPU access:
+Training the model on Google Colab is recommended for free GPU access. Since the dataset is included in the repo, you just need to clone and run:
 
-1. **Upload** `data/train.csv` and the entire `src/` folder to your Colab environment.
-2. **Install dependencies:**
-   ```bash
-   pip install torch pandas numpy scikit-learn matplotlib tqdm
+1. **Open a new Colab notebook** and run these cells:
+
+   ```python
+   # Cell 1: Clone the repository
+   !git clone https://github.com/yourusername/Comment-Toxicity-Detection.git
+   %cd Comment-Toxicity-Detection
    ```
-3. **Run training:**
-   ```bash
-   python -m src.train
+
+   ```python
+   # Cell 2: Install dependencies
+   !pip install torch pandas numpy scikit-learn matplotlib tqdm
    ```
-4. **Download trained artifacts** from Colab:
-   - `models/toxicity_model.pth` — trained model weights
-   - `models/vocab.json` — vocabulary mapping
-   - `models/training_history.json` — training/validation metrics
-   - `models/*.png` — training visualization plots
-5. **Place all downloaded files** into your local `models/` directory.
+
+   ```python
+   # Cell 3: Train the model (uses GPU automatically if available)
+   !python -m src.train --epochs 5 --batch-size 256
+   ```
+
+   > 💡 Use `--sample-size 160000` for faster training (~15 min on Colab GPU), or `--sample-size 0` for the full 560K dataset (~45 min).
+
+2. **Download the trained model files** from Colab's `models/` folder:
+
+   ```python
+   # Cell 4: Zip model artifacts for easy download
+   !zip -r models.zip models/
+   ```
+   Then click the file icon in the Colab sidebar → navigate to `models.zip` → download.
+
+3. **Place the downloaded files** into your local `models/` directory:
+   - `toxicity_model.pth` — trained model weights
+   - `vocab.json` — vocabulary mapping
+   - `training_history.json` — training/validation metrics
+   - `evaluation_results.json` — evaluation metrics
+   - `*.png` — training visualization plots
 
 ### Running the App
 

@@ -14,9 +14,8 @@ build/
 
 # Model files (large)
 models/*.pth
-
-# Data files (large)
-data/
+models/*.png
+models/*.json
 
 # IDE
 .vscode/
