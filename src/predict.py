@@ -159,7 +159,8 @@ def predict_single(
         Mapping from label name to predicted probability, e.g.
         ``{'toxic': 0.95, 'severe_toxic': 0.02, …}``.
     """
-    if not text or not text.strip():
+    # Handle NaN/None/non-string types gracefully
+    if not isinstance(text, str) or not text.strip():
         return {col: 0.0 for col in config.LABEL_COLUMNS}
 
     cleaned = clean_text(text)
@@ -204,9 +205,20 @@ def predict_batch(
     if not texts:
         return pd.DataFrame(columns=["text"] + config.LABEL_COLUMNS)
 
+    # Clean input: filter out NaN/None and convert to strings
+    cleaned_texts = [
+        str(t).strip() if isinstance(t, str) or (t is not None and str(t) != 'nan') else ""
+        for t in texts
+    ]
+    cleaned_texts = [t for t in cleaned_texts if t]  # Filter empty strings
+
     results: list[dict[str, float]] = []
-    for t in texts:
-        preds = predict_single(t, model, vocab, config)
+    for t in cleaned_texts:
+        try:
+            preds = predict_single(t, model, vocab, config)
+        except Exception as e:
+            # If a single row fails, return zeros for that row instead of crashing
+            preds = {col: 0.0 for col in config.LABEL_COLUMNS}
         preds["text"] = t
         preds["overall_toxicity"] = max(
             preds.get(c, 0.0) for c in config.LABEL_COLUMNS

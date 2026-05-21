@@ -812,7 +812,17 @@ def page_bulk_prediction():
     selected_col = st.selectbox("Select the text column", text_cols, index=text_cols.index(default_col) if default_col else 0)
 
     if st.button("🚀  Run Bulk Prediction", width="stretch"):
-        texts = df[selected_col].astype(str).tolist()
+        # Clean data: remove NaN/empty values and strip whitespace
+        df_clean = df.dropna(subset=[selected_col])
+        df_clean[selected_col] = df_clean[selected_col].astype(str).str.strip()
+        df_clean = df_clean[df_clean[selected_col] != ""]
+        df_clean = df_clean.reset_index(drop=True)
+        
+        if len(df_clean) == 0:
+            st.warning("No valid comments to process after filtering empty rows.")
+            return
+        
+        texts = df_clean[selected_col].tolist()
         progress = st.progress(0, text="Processing comments…")
 
         # Process in chunks for progress display
