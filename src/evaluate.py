@@ -39,6 +39,7 @@ def evaluate_model(
     dataloader: torch.utils.data.DataLoader,
     device: torch.device,
     label_columns: list[str],
+    thresholds: list[float] | None = None,
 ) -> dict[str, Any]:
     """Run inference on a dataloader and compute classification metrics.
 
@@ -58,8 +59,8 @@ def evaluate_model(
     dict[str, Any]
         Dictionary containing:
         - ``y_true``  – ground-truth labels ``(N, C)``
-        - ``y_pred``  – binary predictions ``(N, C)`` (threshold 0.5)
-        - ``y_proba`` – raw probabilities ``(N, C)``
+        - ``y_pred``  – binary predictions ``(N, C)`` (per-label thresholds)
+        - ``y_proba`` – probabilities ``(N, C)``
         - ``metrics``  – nested dict with per-label and macro scores
     """
     model.eval()
@@ -70,13 +71,21 @@ def evaluate_model(
         for batch in dataloader:
             texts, labels = batch
             texts = texts.to(device)
-            proba = model(texts).cpu().numpy()
+            logits = model(texts)
+            proba = torch.sigmoid(logits).cpu().numpy()
             all_proba.append(proba)
             all_true.append(labels.numpy())
 
     y_proba = np.concatenate(all_proba, axis=0)
     y_true = np.concatenate(all_true, axis=0)
-    y_pred = (y_proba >= 0.5).astype(int)
+
+    # Apply per-label thresholds (default 0.5)
+    if thresholds is not None:
+        y_pred = np.zeros_like(y_proba)
+        for i, t in enumerate(thresholds):
+            y_pred[:, i] = (y_proba[:, i] >= t).astype(int)
+    else:
+        y_pred = (y_proba >= 0.5).astype(int)
 
     # --- Per-label metrics ---
     metrics: dict[str, Any] = {"per_label": {}}

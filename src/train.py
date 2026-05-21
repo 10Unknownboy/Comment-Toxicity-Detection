@@ -51,6 +51,7 @@ from src.evaluate import (
     plot_training_history,
 )
 from src.model import ToxicityClassifier
+from src.threshold_tuner import tune_thresholds_from_data
 
 
 # ===================================================================
@@ -122,8 +123,26 @@ def train_model(config: Config) -> dict[str, Any]:
     print(f"\n[model] Total parameters     : {total_params:,}")
     print(f"[model] Trainable parameters : {trainable_params:,}\n")
 
+    # ---- Calculate class weights for imbalance ----
+    print("[train] Calculating class weights from training data\u2026")
+    train_labels_list: list[np.ndarray] = []
+    for batch in train_loader:
+        _, labels = batch
+        train_labels_list.append(labels.numpy())
+    train_labels_all = np.concatenate(train_labels_list, axis=0)
+
+    pos_counts = train_labels_all.sum(axis=0)
+    neg_counts = train_labels_all.shape[0] - pos_counts
+    pos_weights = neg_counts / np.maximum(pos_counts, 1.0)
+    pos_weights_tensor = torch.tensor(pos_weights, dtype=torch.float32).to(device)
+
+    print("[train] Positive weights per label:")
+    for col_name, w in zip(config.LABEL_COLUMNS, pos_weights):
+        print(f"  {col_name:20s} : {w:.2f}")
+    print()
+
     # ---- Loss & optimiser ----
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weights_tensor)
     optimiser = torch.optim.Adam(model.parameters(), lr=config.LEARNING_RATE)
 
     # ---- Training history ----
@@ -192,7 +211,8 @@ def train_model(config: Config) -> dict[str, Any]:
                 val_loss += loss.item()
                 val_batches += 1
 
-                all_val_proba.append(outputs.cpu().numpy())
+                proba = torch.sigmoid(outputs)  # logits -> probabilities
+                all_val_proba.append(proba.cpu().numpy())
                 all_val_true.append(labels.cpu().numpy())
 
         avg_val_loss = val_loss / max(val_batches, 1)
@@ -286,6 +306,31 @@ def train_model(config: Config) -> dict[str, Any]:
         json.dump(serialisable_metrics, fh, indent=2)
     print(f"[eval] Evaluation metrics saved to {eval_metrics_path}")
 
+    # ---- Threshold tuning on validation set ----
+    print("\n" + "=" * 60)
+    print("  Tuning per-label decision thresholds on validation set …")
+    print("=" * 60)
+
+    thresholds_path = config.model_path / "thresholds.json"
+    thresholds = tune_thresholds_from_data(
+        model, val_loader, device, config.LABEL_COLUMNS, thresholds_path
+    )
+
+    # ---- Re-evaluate test set with optimised thresholds ----
+    thresholds_list = [thresholds[col] for col in config.LABEL_COLUMNS]
+    results_opt = evaluate_model(
+        model, test_loader, device, config.LABEL_COLUMNS, thresholds=thresholds_list
+    )
+    macro_opt = results_opt["metrics"]["macro"]
+    print(f"\n{'=' * 60}")
+    print("  Test Metrics WITH optimised thresholds")
+    print(f"{'=' * 60}")
+    print(f"  ROC-AUC   : {macro_opt['roc_auc']:.4f}")
+    print(f"  Precision : {macro_opt['precision']:.4f}")
+    print(f"  Recall    : {macro_opt['recall']:.4f}")
+    print(f"  F1 Score  : {macro_opt['f1']:.4f}")
+    print(f"{'=' * 60}\n")
+
     # ---- Final instructions ----
     print("\n" + "=" * 60)
     print("  ✅  TRAINING COMPLETE!")
@@ -297,7 +342,8 @@ def train_model(config: Config) -> dict[str, Any]:
     print(f"    4. {history_plot_path}")
     print(f"    5. {cm_path}")
     print(f"    6. {roc_path}")
-    print(f"    7. {eval_metrics_path}")  # evaluation_results.json
+    print(f"    7. {eval_metrics_path}")
+    print(f"    8. {thresholds_path}")
     print("\n  Place them in the 'models/' directory of your local project.")
     print("=" * 60 + "\n")
 

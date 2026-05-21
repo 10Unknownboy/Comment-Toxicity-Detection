@@ -275,7 +275,7 @@ def cached_load_model():
 
 
 def get_model():
-    """Try to load the model; return (model, vocab, config) or None."""
+    """Try to load the model; return (model, vocab, config, thresholds) or None."""
     try:
         return cached_load_model()
     except Exception as exc:
@@ -379,11 +379,11 @@ def page_realtime():
             show_model_missing_message()
             return
 
-        model, vocab, config = result
+        model, vocab, config, thresholds = result
 
         with st.spinner("Analysing…"):
             predictions = predict_single(comment, model, vocab, config)
-            label = get_toxicity_label(predictions)
+            label = get_toxicity_label(predictions, thresholds=thresholds)
             overall = max(predictions.values())
 
         # ── Results ──────────────────────────────────────────────────────────
@@ -412,6 +412,16 @@ def page_realtime():
             )
 
         st.markdown("")  # spacer
+
+        # \u2500\u2500 Warning banner for high toxicity \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        if any(v >= 0.70 for v in predictions.values()):
+            render_glass_card(
+                "<div style='border-left:4px solid #ef4444;padding:12px 16px;'"
+                "background:rgba(239,68,68,0.08);'>"
+                "<strong style='color:#ef4444;'>\u26a0\ufe0f High Toxicity Detected</strong> \u2014 "
+                "This comment contains potentially harmful content."
+                "</div>"
+            )
 
         # ── Horizontal bar chart ─────────────────────────────────────────────
         labels = [LABEL_DISPLAY.get(k, k) for k in LABEL_COLUMNS]
@@ -445,9 +455,10 @@ def page_realtime():
         for col in LABEL_COLUMNS:
             s = predictions[col]
             sc = get_severity_color(s)
+            t = thresholds.get(col, 0.5) if thresholds else 0.5
             status = (
                 '<span class="badge-fail">FAIL</span>'
-                if s >= 0.5
+                if s >= t
                 else '<span class="badge-pass">PASS</span>'
             )
             bar_pct = s * 100
@@ -473,6 +484,14 @@ def page_realtime():
             "<th style='text-align:center;padding:10px 14px;color:#9ca3af;'>Status</th>"
             "</tr></thead>"
             f"<tbody>{table_rows}</tbody></table>"
+        )
+
+        # \u2500\u2500 Subtle toxicity note \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        st.markdown(
+            "<p style='text-align:center;color:#6b7280;font-size:0.8rem;margin-top:12px;'>"
+            "\u2139\ufe0f Model may miss subtle, sarcastic, or context-dependent toxicity."
+            "</p>",
+            unsafe_allow_html=True,
         )
 
         st.markdown("</div>", unsafe_allow_html=True)
@@ -754,7 +773,7 @@ def page_bulk_prediction():
         show_model_missing_message()
         return
 
-    model, vocab, config = result
+    model, vocab, config, thresholds = result
 
     uploaded = st.file_uploader(
         "📤 Upload CSV file",

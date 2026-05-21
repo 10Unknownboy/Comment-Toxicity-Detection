@@ -22,6 +22,7 @@ import torch
 from src.config import Config, get_default_config
 from src.data_preprocessing import clean_text, encode_text, load_vocabulary
 from src.model import ToxicityClassifier
+from src.threshold_tuner import load_thresholds
 
 # ---------------------------------------------------------------------------
 # Module-level cache to avoid reloading on every call
@@ -29,6 +30,7 @@ from src.model import ToxicityClassifier
 _cached_model: Optional[ToxicityClassifier] = None
 _cached_vocab: Optional[dict[str, int]] = None
 _cached_config: Optional[Config] = None
+_cached_thresholds: Optional[dict[str, float]] = None
 
 
 # ===================================================================
@@ -37,8 +39,8 @@ _cached_config: Optional[Config] = None
 
 def load_model(
     model_dir: str = "models",
-) -> tuple[ToxicityClassifier, dict[str, int], Config]:
-    """Load the trained model, vocabulary, and configuration.
+) -> tuple[ToxicityClassifier, dict[str, int], Config, dict[str, float]]:
+    """Load the trained model, vocabulary, configuration, and thresholds.
 
     The model is forced onto **CPU** so the Streamlit app works without
     a GPU.  Results are cached at module level – subsequent calls return
@@ -48,24 +50,27 @@ def load_model(
     ----------
     model_dir : str, optional
         Path (relative to project root) that contains
-        ``toxicity_model.pth`` and ``vocab.json``.  Defaults to
-        ``"models"``.
+        ``toxicity_model.pth``, ``vocab.json``, and optionally
+        ``thresholds.json``.  Defaults to ``"models"``.
 
     Returns
     -------
-    tuple[ToxicityClassifier, dict[str, int], Config]
-        ``(model, vocab, config)`` – the model is already in eval mode.
+    tuple[ToxicityClassifier, dict[str, int], Config, dict[str, float]]
+        ``(model, vocab, config, thresholds)`` – the model is in eval
+        mode.  If ``thresholds.json`` is missing, default 0.5 thresholds
+        are returned.
 
     Raises
     ------
     FileNotFoundError
         If the model checkpoint or vocabulary file is missing.
     """
-    global _cached_model, _cached_vocab, _cached_config  # noqa: PLW0603
+    global _cached_model, _cached_vocab, _cached_config, _cached_thresholds
 
     if _cached_model is not None and _cached_vocab is not None:
         assert _cached_config is not None
-        return _cached_model, _cached_vocab, _cached_config
+        assert _cached_thresholds is not None
+        return _cached_model, _cached_vocab, _cached_config, _cached_thresholds
 
     config = get_default_config()
     model_path = Path(model_dir)
@@ -76,6 +81,7 @@ def load_model(
 
     weights_file = model_path / "toxicity_model.pth"
     vocab_file = model_path / "vocab.json"
+    thresholds_file = model_path / "thresholds.json"
 
     if not weights_file.exists():
         raise FileNotFoundError(
@@ -90,6 +96,11 @@ def load_model(
 
     # Load vocab
     vocab = load_vocabulary(vocab_file)
+
+    # Load thresholds (fall back to 0.5 for all labels)
+    thresholds = load_thresholds(thresholds_file)
+    if thresholds is None:
+        thresholds = {col: 0.5 for col in config.LABEL_COLUMNS}
 
     # Instantiate model
     actual_vocab_size = len(vocab) + 2  # +2 for PAD & UNK
@@ -113,8 +124,9 @@ def load_model(
     _cached_model = model
     _cached_vocab = vocab
     _cached_config = config
+    _cached_thresholds = thresholds
 
-    return model, vocab, config
+    return model, vocab, config, thresholds
 
 
 # ===================================================================
@@ -155,7 +167,8 @@ def predict_single(
     tensor = torch.tensor([encoded], dtype=torch.long)  # (1, seq_len)
 
     with torch.no_grad():
-        proba = model(tensor).squeeze(0).numpy()  # (num_labels,)
+        logits = model(tensor)
+        proba = torch.sigmoid(logits).squeeze(0).numpy()  # (num_labels,)
 
     return {col: float(proba[i]) for i, col in enumerate(config.LABEL_COLUMNS)}
 
@@ -195,11 +208,15 @@ def predict_batch(
     for t in texts:
         preds = predict_single(t, model, vocab, config)
         preds["text"] = t
+        preds["overall_toxicity"] = max(
+            preds.get(c, 0.0) for c in config.LABEL_COLUMNS
+        )
+        preds["label"] = get_toxicity_label(preds)
         results.append(preds)
 
     df = pd.DataFrame(results)
     # Reorder columns so "text" comes first
-    cols = ["text"] + config.LABEL_COLUMNS
+    cols = ["text"] + config.LABEL_COLUMNS + ["overall_toxicity", "label"]
     return df[cols]
 
 
@@ -209,23 +226,19 @@ def predict_batch(
 
 def get_toxicity_label(
     predictions: dict[str, float],
-    threshold: float = 0.5,
+    thresholds: dict[str, float] | None = None,
 ) -> str:
     """Return a human-readable toxicity summary label.
 
-    The label reflects the most severe positive prediction:
-
-    * ``"Highly Toxic 🚨"`` – if ``severe_toxic ≥ threshold``
-    * ``"Threat Detected ⚔️"`` – if ``threat ≥ threshold``
-    * ``"Toxic ⚠️"`` – if any other label ≥ threshold
-    * ``"Clean ✅"`` – if no label exceeds the threshold
+    The label reflects the most severe positive prediction using
+    per-label thresholds (from ``thresholds.json``).
 
     Parameters
     ----------
     predictions : dict[str, float]
         Label-to-probability mapping from :func:`predict_single`.
-    threshold : float, optional
-        Decision threshold (default ``0.5``).
+    thresholds : dict[str, float], optional
+        Per-label decision thresholds.  Falls back to 0.5 for all.
 
     Returns
     -------
@@ -236,14 +249,20 @@ def get_toxicity_label(
     if not predictions:
         return "Clean ✅"
 
-    if predictions.get("severe_toxic", 0.0) >= threshold:
+    if thresholds is None:
+        thresholds = {k: 0.5 for k in predictions}
+
+    if predictions.get("severe_toxic", 0.0) >= thresholds.get("severe_toxic", 0.5):
         return "Highly Toxic 🚨"
-    if predictions.get("threat", 0.0) >= threshold:
+    if predictions.get("threat", 0.0) >= thresholds.get("threat", 0.5):
         return "Threat Detected ⚔️"
 
     # Check remaining labels
     for label, score in predictions.items():
-        if score >= threshold:
+        if label in ("text", "overall_toxicity", "label"):
+            continue
+        t = thresholds.get(label, 0.5)
+        if score >= t:
             return "Toxic ⚠️"
 
     return "Clean ✅"

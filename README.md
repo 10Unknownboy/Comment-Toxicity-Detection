@@ -138,7 +138,16 @@ Input Text
 - **Bidirectional LSTM:** Captures context from both preceding and following words, critical for understanding negation, sarcasm, and complex sentence structures.
 - **2 LSTM Layers:** Enables hierarchical feature learning — lower layers capture surface-level patterns, upper layers learn abstract semantic features.
 - **Dropout (0.3):** Prevents overfitting, especially important given the class imbalance in the dataset.
-- **Sigmoid Output:** Enables independent probability prediction for each label, supporting multi-label classification.
+- **BCEWithLogitsLoss + pos_weight:** Handles severe class imbalance (e.g. `threat` at 1:430 ratio) by weighting rare positive examples more heavily during training.
+- **Per-label decision thresholds:** Instead of a universal 0.5 cutoff, optimal thresholds are tuned per label on the validation set by maximising F1 score.
+
+### Class Imbalance Handling
+
+The Jigsaw dataset is heavily imbalanced — `threat` has only ~0.3% positive samples. The pipeline addresses this with:
+
+1. **Weighted BCE Loss** — `pos_weight` per label calculated as `neg_count / pos_count`, giving rare classes proportionally higher loss.
+2. **Threshold Tuning** — After training, `src/threshold_tuner.py` sweeps thresholds 0.05–0.95 per label and selects the value that maximises F1 on the validation set. Results are saved to `models/thresholds.json`.
+3. **Per-label thresholds in inference** — `predict.py` and `app.py` load `thresholds.json` and apply label-specific cutoffs.
 
 ---
 
@@ -211,6 +220,7 @@ Training the model on Google Colab is recommended for free GPU access. Since the
    - `vocab.json` — vocabulary mapping
    - `training_history.json` — training/validation metrics
    - `evaluation_results.json` — evaluation metrics
+   - `thresholds.json` — per-label decision thresholds
    - `*.png` — training visualization plots
 
 ### Running the App
@@ -274,7 +284,13 @@ The BiLSTM model achieves strong performance across all toxicity categories:
 | `insult`        | ~0.97   | ~0.73     | ~0.65  | ~0.69    |
 | `identity_hate` | ~0.97   | ~0.55     | ~0.45  | ~0.50    |
 
-> **Note:** These are approximate expected metrics. Actual performance may vary based on training configuration and random seed. Rare categories (`severe_toxic`, `threat`, `identity_hate`) have lower precision/recall due to class imbalance.
+> **Note:** These are approximate expected metrics with default 0.5 thresholds. With **optimised per-label thresholds**, rare classes like `threat` and `identity_hate` achieve non-zero F1. Actual performance varies by training run.
+
+### Known Limitations
+
+- **Subtle/sarcastic toxicity:** Phrases like "Nobody asked for your opinion" may score low despite being passive-aggressive.
+- **Context dependence:** The model analyses individual comments without conversation context.
+- **Rare classes:** `threat` and `identity_hate` have very few training examples; performance is inherently limited.
 
 ---
 

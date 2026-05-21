@@ -73,7 +73,6 @@ class ToxicityClassifier(nn.Module):
         self.fc1 = nn.Linear(hidden_dim * 2, 64)  # *2 for bidirectional
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(64, num_labels)
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass.
@@ -86,8 +85,8 @@ class ToxicityClassifier(nn.Module):
         Returns
         -------
         torch.Tensor
-            Predicted probabilities of shape ``(batch_size, num_labels)``,
-            each value in ``[0, 1]``.
+            Raw logits of shape ``(batch_size, num_labels)``.
+            Apply ``torch.sigmoid()`` externally to get probabilities.
         """
         # x: (batch, seq_len)
         embedded = self.embedding(x)  # (batch, seq_len, embed_dim)
@@ -109,7 +108,6 @@ class ToxicityClassifier(nn.Module):
         out = self.fc1(out)
         out = self.relu(out)
         out = self.dropout(out)
-        out = self.fc2(out)
-        out = self.sigmoid(out)  # (batch, num_labels)
+        out = self.fc2(out)  # (batch, num_labels) — raw logits
 
         return out
