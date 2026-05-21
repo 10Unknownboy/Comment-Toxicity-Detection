@@ -352,7 +352,7 @@ def page_realtime():
     example_cols = st.columns(len(EXAMPLES))
     for idx, (btn_label, btn_text) in enumerate(EXAMPLES.items()):
         with example_cols[idx]:
-            if st.button(btn_label, key=f"ex_{idx}", use_container_width=True):
+            if st.button(btn_label, key=f"ex_{idx}", width="stretch"):
                 st.session_state["comment_input"] = btn_text
 
     st.markdown("")  # spacer
@@ -366,7 +366,7 @@ def page_realtime():
         key="comment_box",
     )
 
-    analyse_clicked = st.button("🔍  Analyse Comment", use_container_width=False)
+    analyse_clicked = st.button("🔍  Analyse Comment")
 
     # ── Prediction ───────────────────────────────────────────────────────────
     if analyse_clicked:
@@ -437,7 +437,7 @@ def page_realtime():
             yaxis=dict(autorange="reversed"),
             height=340,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         # ── Severity table ───────────────────────────────────────────────────
         st.markdown("##### 📋 Detailed Scores")
@@ -542,7 +542,7 @@ def page_data_insights():
             height=380,
             xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.06)"),
         )
-        st.plotly_chart(fig_lbl, use_container_width=True)
+        st.plotly_chart(fig_lbl, width="stretch")
 
     # ── Comment-length histogram ─────────────────────────────────────────────
     with col_b:
@@ -571,7 +571,7 @@ def page_data_insights():
             xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.06)"),
             yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.06)"),
         )
-        st.plotly_chart(fig_hist, use_container_width=True)
+        st.plotly_chart(fig_hist, width="stretch")
 
     styled_divider()
 
@@ -598,9 +598,8 @@ def page_data_insights():
             zmin=0,
             zmax=1,
             colorbar=dict(
-                title="Corr",
+                title=dict(text="Corr", font=dict(color="#9ca3af")),
                 tickfont=dict(color="#9ca3af"),
-                titlefont=dict(color="#9ca3af"),
             ),
         )
     )
@@ -610,7 +609,7 @@ def page_data_insights():
         height=480,
         xaxis=dict(tickangle=-35),
     )
-    st.plotly_chart(fig_corr, use_container_width=True)
+    st.plotly_chart(fig_corr, width="stretch")
 
     # ── Toxic vs Clean pie chart ─────────────────────────────────────────────
     st.markdown("##### 🍩 Toxic vs Clean Breakdown")
@@ -630,7 +629,7 @@ def page_data_insights():
         height=380,
         showlegend=False,
     )
-    st.plotly_chart(fig_pie, use_container_width=True)
+    st.plotly_chart(fig_pie, width="stretch")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -672,7 +671,7 @@ def page_model_performance():
                 metrics_df = pd.DataFrame(table_data)
                 st.dataframe(
                     metrics_df,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
             else:
@@ -683,7 +682,7 @@ def page_model_performance():
                 )
 
             # Overall metrics if present
-            overall = metrics.get("overall", metrics.get("mean", {}))
+            overall = metrics.get("overall", metrics.get("macro", metrics.get("mean", {})))
             if overall:
                 styled_divider()
                 st.markdown("##### 🎯 Overall Metrics")
@@ -727,7 +726,7 @@ def page_model_performance():
         img_path = MODEL_DIR / fname
         if img_path.exists():
             st.markdown(f"##### 🖼️ {title}")
-            st.image(str(img_path), use_container_width=True)
+            st.image(str(img_path), width="stretch")
             st.markdown("")
         else:
             render_glass_card(
@@ -793,7 +792,7 @@ def page_bulk_prediction():
 
     selected_col = st.selectbox("Select the text column", text_cols, index=text_cols.index(default_col) if default_col else 0)
 
-    if st.button("🚀  Run Bulk Prediction", use_container_width=True):
+    if st.button("🚀  Run Bulk Prediction", width="stretch"):
         texts = df[selected_col].astype(str).tolist()
         progress = st.progress(0, text="Processing comments…")
 
@@ -859,11 +858,11 @@ def page_bulk_prediction():
                 xaxis=dict(showgrid=False),
                 yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.06)"),
             )
-            st.plotly_chart(fig_dist, use_container_width=True)
+            st.plotly_chart(fig_dist, width="stretch")
 
         # Dataframe display
         st.markdown("##### 📄 Results Table")
-        st.dataframe(results_df, use_container_width=True, height=420)
+        st.dataframe(results_df, width="stretch", height=420)
 
         # Download
         csv_bytes = results_df.to_csv(index=False).encode("utf-8")
@@ -872,101 +871,10 @@ def page_bulk_prediction():
             data=csv_bytes,
             file_name="toxicity_predictions.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# PAGE: ℹ️ About
-# ══════════════════════════════════════════════════════════════════════════════
-
-def page_about():
-    st.markdown(
-        '<h1 class="gradient-text hero-title">ℹ️ About This Project</h1>'
-        '<p class="hero-subtitle">Understanding the architecture, tech stack, and usage of the Comment Toxicity Detector.</p>',
-        unsafe_allow_html=True,
-    )
-    styled_divider()
-
-    # ── Project overview ─────────────────────────────────────────────────────
-    render_glass_card(
-        "<h3 style='margin-top:0;'>🎯 Project Overview</h3>"
-        "<p>The <strong>Comment Toxicity Detector</strong> is a deep-learning application that "
-        "classifies user-generated comments into six categories of toxicity:</p>"
-        "<ul>"
-        "<li><strong>Toxic</strong> — generally rude or disrespectful</li>"
-        "<li><strong>Severe Toxic</strong> — extremely hateful or aggressive</li>"
-        "<li><strong>Obscene</strong> — contains obscene language</li>"
-        "<li><strong>Threat</strong> — contains threatening language</li>"
-        "<li><strong>Insult</strong> — insulting or demeaning</li>"
-        "<li><strong>Identity Hate</strong> — attacks based on identity</li>"
-        "</ul>"
-        "<p style='color:#9ca3af;'>This is a <em>multi-label classification</em> task — "
-        "a single comment may belong to multiple categories simultaneously.</p>"
-    )
-
-    # ── Architecture diagram ─────────────────────────────────────────────────
-    st.markdown("##### 🏗️ Model Architecture")
-    render_glass_card(
-        "<pre style='color:#a5b4fc;font-size:0.95rem;line-height:1.7;text-align:center;"
-        "background:rgba(0,0,0,0.2);padding:20px;border-radius:10px;overflow-x:auto;'>"
-        "┌─────────────┐    ┌──────────────┐    ┌───────────────┐    ┌──────────────┐    ┌────────────┐\n"
-        "│  Raw Text   │───▶│  Tokeniser   │───▶│   Embedding   │───▶│   BiLSTM     │───▶│  FC Layers │\n"
-        "│  (Comment)  │    │  + Padding   │    │  (128-dim)    │    │  (2 layers)  │    │  + Sigmoid │\n"
-        "└─────────────┘    └──────────────┘    └───────────────┘    └──────────────┘    └────────────┘\n"
-        "                                                                  │\n"
-        "                                                           ┌──────┴──────┐\n"
-        "                                                           │   Dropout   │\n"
-        "                                                           │   (0.3)     │\n"
-        "                                                           └─────────────┘\n"
-        "</pre>"
-    )
-
-    # ── Tech stack ───────────────────────────────────────────────────────────
-    st.markdown("##### 🛠️ Tech Stack")
-    badges = [
-        "🐍 Python 3.10+",
-        "🔥 PyTorch",
-        "🎈 Streamlit 1.54",
-        "📊 Plotly",
-        "🐼 Pandas",
-        "🔢 NumPy",
-        "📝 NLTK / Regex",
-        "🧠 BiLSTM",
-    ]
-    badge_html = " ".join(f'<span class="tech-badge">{b}</span>' for b in badges)
-    st.markdown(f'<div style="margin:10px 0 20px;">{badge_html}</div>', unsafe_allow_html=True)
-
-    # ── Usage ────────────────────────────────────────────────────────────────
-    render_glass_card(
-        "<h3 style='margin-top:0;'>🚀 Getting Started</h3>"
-        "<ol style='line-height:2;'>"
-        "<li>Install dependencies: <code>pip install -r requirements.txt</code></li>"
-        "<li>Train the model: <code>python -m src.train</code></li>"
-        "<li>Launch the app: <code>streamlit run app.py</code></li>"
-        "</ol>"
-        "<p style='color:#9ca3af;'>The model trains on the Jigsaw Toxic Comment dataset and saves "
-        "weights to the <code>models/</code> directory.</p>"
-    )
-
-    # ── GitHub ───────────────────────────────────────────────────────────────
-    render_glass_card(
-        "<h3 style='margin-top:0;'>🔗 Links</h3>"
-        "<p>"
-        "📂 <a href='#' style='color:#667eea;text-decoration:none;'>GitHub Repository</a> &nbsp;|&nbsp; "
-        "📄 <a href='https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge' "
-        "style='color:#667eea;text-decoration:none;' target='_blank'>Kaggle Competition</a>"
-        "</p>"
-    )
-
-    # ── Footer ───────────────────────────────────────────────────────────────
-    styled_divider()
-    st.markdown(
-        "<p style='text-align:center;color:#6b7280;font-size:0.85rem;'>"
-        "Built with ❤️ using Streamlit &nbsp;•&nbsp; © 2026"
-        "</p>",
-        unsafe_allow_html=True,
-    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -994,7 +902,6 @@ def main():
                 "📊 Data Insights",
                 "📈 Model Performance",
                 "📁 Bulk Prediction",
-                "ℹ️ About",
             ],
             label_visibility="collapsed",
         )
@@ -1017,7 +924,6 @@ def main():
         "📊 Data Insights": page_data_insights,
         "📈 Model Performance": page_model_performance,
         "📁 Bulk Prediction": page_bulk_prediction,
-        "ℹ️ About": page_about,
     }
 
     pages[page]()
