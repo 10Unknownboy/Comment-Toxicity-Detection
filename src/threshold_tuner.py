@@ -25,7 +25,7 @@ from typing import Any
 
 import numpy as np
 import torch
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_score, recall_score
 
 # Ensure project root is on sys.path so ``src.*`` imports work in Colab.
 _project_root = Path(__file__).resolve().parent.parent
@@ -48,8 +48,14 @@ def find_optimal_thresholds(
     search_min: float = 0.05,
     search_max: float = 0.95,
     step: float = 0.05,
+    min_precision: float = 0.40,
 ) -> dict[str, float]:
     """Find the threshold that maximises F1 score for each label.
+
+    A **precision floor** is enforced: candidate thresholds are only
+    accepted if they achieve ``precision >= min_precision``.  This
+    prevents the tuner from selecting very low thresholds that inflate
+    recall at the cost of unusable precision.
 
     Parameters
     ----------
@@ -63,6 +69,9 @@ def find_optimal_thresholds(
         Boundaries of the threshold sweep.
     step : float
         Increment between candidate thresholds.
+    min_precision : float
+        Minimum acceptable precision.  Candidates below this are
+        skipped (default ``0.40``).
 
     Returns
     -------
@@ -75,17 +84,29 @@ def find_optimal_thresholds(
     for i, col in enumerate(label_columns):
         best_f1 = -1.0
         best_t = 0.5  # fallback
+        best_p = 0.0
+        best_r = 0.0
 
         for t in candidates:
             preds = (y_proba[:, i] >= t).astype(int)
+            p = precision_score(y_true[:, i], preds, zero_division=0)
+            r = recall_score(y_true[:, i], preds, zero_division=0)
             f1 = f1_score(y_true[:, i], preds, zero_division=0)
-            if f1 > best_f1:
+
+            # Only accept if precision meets the floor
+            if p >= min_precision and f1 > best_f1:
                 best_f1 = f1
                 best_t = float(round(t, 2))
+                best_p = p
+                best_r = r
 
         thresholds[col] = best_t
         pos = int(y_true[:, i].sum())
-        print(f"  {col:20s} → threshold={best_t:.2f}  F1={best_f1:.4f}  (pos={pos})")
+        print(
+            f"  {col:20s} → t={best_t:.2f}  "
+            f"P={best_p:.3f}  R={best_r:.3f}  F1={best_f1:.4f}  "
+            f"(pos={pos})"
+        )
 
     return thresholds
 

@@ -133,17 +133,20 @@ def train_model(config: Config) -> dict[str, Any]:
 
     pos_counts = train_labels_all.sum(axis=0)
     neg_counts = train_labels_all.shape[0] - pos_counts
-    pos_weights = neg_counts / np.maximum(pos_counts, 1.0)
+    raw_weights = neg_counts / np.maximum(pos_counts, 1.0)
+    pos_weights = np.sqrt(raw_weights)  # sqrt dampening to avoid overcorrection
     pos_weights_tensor = torch.tensor(pos_weights, dtype=torch.float32).to(device)
 
-    print("[train] Positive weights per label:")
-    for col_name, w in zip(config.LABEL_COLUMNS, pos_weights):
-        print(f"  {col_name:20s} : {w:.2f}")
+    print("[train] Positive weights per label (sqrt-dampened):")
+    for col_name, rw, sw in zip(config.LABEL_COLUMNS, raw_weights, pos_weights):
+        print(f"  {col_name:20s} : {rw:7.2f} → sqrt → {sw:.2f}")
     print()
 
     # ---- Loss & optimiser ----
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weights_tensor)
-    optimiser = torch.optim.Adam(model.parameters(), lr=config.LEARNING_RATE)
+    lr = config.LEARNING_RATE * 0.5  # reduced LR for stability
+    optimiser = torch.optim.Adam(model.parameters(), lr=lr)
+    print(f"[train] Learning rate: {lr} (0.5× default)")
 
     # ---- Training history ----
     history: dict[str, list[float]] = {
@@ -181,6 +184,7 @@ def train_model(config: Config) -> dict[str, Any]:
             outputs = model(texts)
             loss = criterion(outputs, labels)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimiser.step()
 
             running_loss += loss.item()
