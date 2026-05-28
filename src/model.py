@@ -1,16 +1,13 @@
 """
 Bidirectional LSTM model for multi-label toxicity classification.
 
-Architecture
-------------
-Embedding → BiLSTM (stacked) → Dropout → FC → ReLU → Dropout → FC → Sigmoid
+Architecture:
+  Embedding -> BiLSTM (stacked) -> Dropout -> FC -> ReLU -> Dropout -> FC -> Sigmoid
 
 The final hidden states from both LSTM directions are concatenated and
 passed through two fully-connected layers to produce independent
 probabilities for each of the six toxicity labels.
 """
-
-from __future__ import annotations
 
 import torch
 import torch.nn as nn
@@ -19,32 +16,26 @@ import torch.nn as nn
 class ToxicityClassifier(nn.Module):
     """Multi-label toxicity classifier built on a Bidirectional LSTM.
 
-    Parameters
-    ----------
-    vocab_size : int
-        Total vocabulary size (including PAD and UNK tokens).
-    embed_dim : int
-        Dimensionality of the token-embedding vectors.
-    hidden_dim : int
-        Number of hidden units **per direction** in the LSTM.
-    num_layers : int
-        Number of stacked LSTM layers.
-    dropout : float
-        Dropout probability applied after the LSTM output and between
-        the fully-connected layers.
-    num_labels : int, optional
-        Number of independent binary labels to predict (default ``6``).
+    Constructor arguments:
+      vocab_size  -- total vocabulary size (including PAD and UNK tokens)
+      embed_dim   -- dimensionality of the token-embedding vectors
+      hidden_dim  -- number of hidden units per direction in the LSTM
+      num_layers  -- number of stacked LSTM layers
+      dropout     -- dropout probability applied after the LSTM output
+                     and between the fully-connected layers
+      num_labels  -- number of independent binary labels to predict
+                     (default 6)
     """
 
     def __init__(
         self,
-        vocab_size: int,
-        embed_dim: int,
-        hidden_dim: int,
-        num_layers: int,
-        dropout: float,
-        num_labels: int = 6,
-    ) -> None:
+        vocab_size,
+        embed_dim,
+        hidden_dim,
+        num_layers,
+        dropout,
+        num_labels=6,
+    ):
         super().__init__()
 
         self.hidden_dim = hidden_dim
@@ -74,19 +65,12 @@ class ToxicityClassifier(nn.Module):
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(64, num_labels)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x):
         """Forward pass.
 
-        Parameters
-        ----------
-        x : torch.Tensor
-            Integer-encoded input of shape ``(batch_size, seq_len)``.
-
-        Returns
-        -------
-        torch.Tensor
-            Raw logits of shape ``(batch_size, num_labels)``.
-            Apply ``torch.sigmoid()`` externally to get probabilities.
+        Takes an integer-encoded input tensor of shape (batch_size, seq_len).
+        Returns raw logits of shape (batch_size, num_labels).  Apply
+        torch.sigmoid() externally to get probabilities.
         """
         # x: (batch, seq_len)
         embedded = self.embedding(x)  # (batch, seq_len, embed_dim)

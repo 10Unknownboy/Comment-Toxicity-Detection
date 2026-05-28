@@ -1,31 +1,22 @@
 """
 Configuration module for the Comment Toxicity Detection project.
 
-Provides a centralised Config dataclass with all hyperparameters, paths,
+Provides a centralised Config class with all hyperparameters, paths,
 and project-wide constants.  Helper utilities locate the project root
 directory and return a ready-to-use default configuration instance.
 """
 
-from __future__ import annotations
-
 import os
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 
-def get_project_root() -> Path:
+def get_project_root():
     """Return the absolute path to the project root directory.
 
-    The function walks upward from the directory containing *this* file
-    until it finds a directory that contains a ``src`` sub-directory (the
-    package directory).  If no such directory is found it falls back to
-    the parent of ``src/``.
-
-    Returns
-    -------
-    Path
-        Absolute ``pathlib.Path`` to the project root.
+    Walks upward from the directory containing this file until it finds
+    a directory that contains a ``src`` sub-directory (the package
+    directory).  If no such directory is found it falls back to the
+    parent of ``src/``.
     """
     current = Path(__file__).resolve().parent  # …/src
     # Walk up at most 5 levels looking for a recognisable root marker.
@@ -37,122 +28,101 @@ def get_project_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-@dataclass
 class Config:
     """Central configuration for the Comment Toxicity Detection pipeline.
 
-    Attributes
-    ----------
-    DATA_DIR : str
-        Relative path to the data directory (resolved against project root).
-    MODEL_DIR : str
-        Relative path to the model / artifact directory.
-    TRAIN_FILE : str
-        Filename of the training CSV inside ``DATA_DIR``.
-    VOCAB_SIZE : int
-        Maximum vocabulary size (most-frequent tokens kept).
-    EMBED_DIM : int
-        Dimensionality of the token-embedding layer.
-    HIDDEN_DIM : int
-        Number of hidden units per direction in the BiLSTM.
-    NUM_LAYERS : int
-        Number of stacked LSTM layers.
-    DROPOUT : float
-        Dropout probability applied after the LSTM and between FC layers.
-    MAX_SEQ_LEN : int
-        Maximum token-sequence length (pad / truncate to this).
-    BATCH_SIZE : int
-        Mini-batch size used during training and evaluation.
-    EPOCHS : int
-        Maximum number of training epochs.
-    LEARNING_RATE : float
-        Initial learning rate for the Adam optimiser.
-    TRAIN_SAMPLE_SIZE : Optional[int]
-        If set, randomly sample this many rows from the training CSV.
-        Use ``None`` to train on the full dataset.
-    VAL_SPLIT : float
-        Fraction of training data reserved for validation.
-    TEST_SPLIT : float
-        Fraction of training data reserved for testing.
-    EARLY_STOPPING_PATIENCE : int
-        Number of epochs without validation-loss improvement before
-        stopping early.
-    LABEL_COLUMNS : list[str]
-        Target column names in the CSV.
-    RANDOM_SEED : int
-        Global random seed for reproducibility.
+    All hyperparameters, file paths, and project-wide constants are
+    defined here with sensible defaults.  Property helpers provide
+    resolved absolute paths derived from the project root.
     """
 
-    # ---- Paths ----
-    DATA_DIR: str = "data"
-    MODEL_DIR: str = "models"
-    TRAIN_FILE: str = "train.csv"
+    def __init__(
+        self,
+        DATA_DIR="data",
+        MODEL_DIR="models",
+        TRAIN_FILE="train.csv",
+        VOCAB_SIZE=50_000,
+        EMBED_DIM=128,
+        HIDDEN_DIM=128,
+        NUM_LAYERS=2,
+        DROPOUT=0.3,
+        MAX_SEQ_LEN=200,
+        BATCH_SIZE=256,
+        EPOCHS=5,
+        LEARNING_RATE=1e-3,
+        TRAIN_SAMPLE_SIZE=160_000,
+        VAL_SPLIT=0.1,
+        TEST_SPLIT=0.1,
+        EARLY_STOPPING_PATIENCE=2,
+        LABEL_COLUMNS=None,
+        RANDOM_SEED=42,
+    ):
+        # ---- Paths ----
+        self.DATA_DIR = DATA_DIR
+        self.MODEL_DIR = MODEL_DIR
+        self.TRAIN_FILE = TRAIN_FILE
 
-    # ---- Model hyperparameters ----
-    VOCAB_SIZE: int = 50_000
-    EMBED_DIM: int = 128
-    HIDDEN_DIM: int = 128
-    NUM_LAYERS: int = 2
-    DROPOUT: float = 0.3
+        # ---- Model hyperparameters ----
+        self.VOCAB_SIZE = VOCAB_SIZE
+        self.EMBED_DIM = EMBED_DIM
+        self.HIDDEN_DIM = HIDDEN_DIM
+        self.NUM_LAYERS = NUM_LAYERS
+        self.DROPOUT = DROPOUT
 
-    # ---- Training ----
-    MAX_SEQ_LEN: int = 200
-    BATCH_SIZE: int = 256
-    EPOCHS: int = 5
-    LEARNING_RATE: float = 1e-3
-    TRAIN_SAMPLE_SIZE: Optional[int] = 160_000
-    VAL_SPLIT: float = 0.1
-    TEST_SPLIT: float = 0.1
-    EARLY_STOPPING_PATIENCE: int = 2
+        # ---- Training ----
+        self.MAX_SEQ_LEN = MAX_SEQ_LEN
+        self.BATCH_SIZE = BATCH_SIZE
+        self.EPOCHS = EPOCHS
+        self.LEARNING_RATE = LEARNING_RATE
+        self.TRAIN_SAMPLE_SIZE = TRAIN_SAMPLE_SIZE
+        self.VAL_SPLIT = VAL_SPLIT
+        self.TEST_SPLIT = TEST_SPLIT
+        self.EARLY_STOPPING_PATIENCE = EARLY_STOPPING_PATIENCE
 
-    # ---- Labels ----
-    LABEL_COLUMNS: list[str] = field(
-        default_factory=lambda: [
-            "toxic",
-            "severe_toxic",
-            "obscene",
-            "threat",
-            "insult",
-            "identity_hate",
-        ]
-    )
+        # ---- Labels ----
+        if LABEL_COLUMNS is None:
+            self.LABEL_COLUMNS = [
+                "toxic",
+                "severe_toxic",
+                "obscene",
+                "threat",
+                "insult",
+                "identity_hate",
+            ]
+        else:
+            self.LABEL_COLUMNS = LABEL_COLUMNS
 
-    # ---- Seed ----
-    RANDOM_SEED: int = 42
+        # ---- Seed ----
+        self.RANDOM_SEED = RANDOM_SEED
 
-    # ---- Derived helpers (not part of __init__) ----
+    # ---- Derived helpers ----
 
     @property
-    def data_path(self) -> Path:
+    def data_path(self):
         """Resolved absolute path to the data directory."""
         return get_project_root() / self.DATA_DIR
 
     @property
-    def model_path(self) -> Path:
+    def model_path(self):
         """Resolved absolute path to the model directory."""
         return get_project_root() / self.MODEL_DIR
 
     @property
-    def train_csv_path(self) -> Path:
+    def train_csv_path(self):
         """Resolved absolute path to the training CSV."""
         return self.data_path / self.TRAIN_FILE
 
     @property
-    def num_labels(self) -> int:
+    def num_labels(self):
         """Number of target labels."""
         return len(self.LABEL_COLUMNS)
 
 
-def get_default_config() -> Config:
-    """Create and return a ``Config`` instance with default values.
+def get_default_config():
+    """Create and return a Config instance with default values.
 
-    The function also ensures that the ``models/`` directory exists so
-    that downstream code can write checkpoints without additional checks.
-
-    Returns
-    -------
-    Config
-        A freshly-created default configuration object.
+    Also ensures that the models/ directory exists so that downstream
+    code can write checkpoints without additional checks.
     """
     config = Config()
     os.makedirs(config.model_path, exist_ok=True)

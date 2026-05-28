@@ -1,4 +1,4 @@
-# 🛡️ Deep Learning for Comment Toxicity Detection
+# Deep Learning for Comment Toxicity Detection
 
 ![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.9-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
@@ -9,7 +9,7 @@
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
@@ -32,7 +32,7 @@
 
 ---
 
-## 🔍 Overview
+## Overview
 
 Online platforms face a growing crisis of toxic and abusive comments. From social media feeds to news article discussions, toxic language — including hate speech, threats, obscenity, and identity-based attacks — degrades the quality of public discourse, drives away constructive users, and creates hostile digital environments. Manual moderation is neither scalable nor sustainable for platforms handling millions of comments daily.
 
@@ -42,17 +42,17 @@ This project implements a **Bidirectional LSTM (BiLSTM)** deep learning model tr
 
 ---
 
-## ✨ Features
+## Features
 
-- **🔮 Real-Time Toxicity Detection** — Instantly analyze any comment for toxic content with probability scores across all six categories.
-- **🏷️ 6-Label Multi-Label Classification** — Simultaneously detects `toxic`, `severe_toxic`, `obscene`, `threat`, `insult`, and `identity_hate`.
-- **📊 Interactive Streamlit Dashboard** — A polished, user-friendly web interface for exploring predictions and model insights.
-- **📁 Bulk CSV Prediction** — Upload a CSV file of comments and get toxicity predictions for every row in one go.
-- **📈 Model Performance Visualization** — Interactive charts showing training history, ROC curves, confusion matrices, and per-label metrics.
+- **Real-Time Toxicity Detection** — Instantly analyze any comment for toxic content with probability scores across all six categories.
+- **6-Label Multi-Label Classification** — Simultaneously detects `toxic`, `severe_toxic`, `obscene`, `threat`, `insult`, and `identity_hate`.
+- **Interactive Streamlit Dashboard** — A polished, user-friendly web interface for exploring predictions and model insights.
+- **Bulk CSV Prediction** — Upload a CSV file of comments and get toxicity predictions for every row in one go.
+- **Model Performance Visualization** — Interactive charts showing training history, ROC curves, confusion matrices, and per-label metrics.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Technology    | Version | Purpose                          |
 |---------------|---------|----------------------------------|
@@ -67,7 +67,7 @@ This project implements a **Bidirectional LSTM (BiLSTM)** deep learning model tr
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 Comment Toxicity Detection/
@@ -81,12 +81,15 @@ Comment Toxicity Detection/
 │   ├── model.py                   # BiLSTM model architecture
 │   ├── train.py                   # Training loop and checkpointing
 │   ├── evaluate.py                # Evaluation metrics and visualization
-│   └── predict.py                 # Inference utilities
+│   ├── predict.py                 # Inference utilities
+│   └── threshold_tuner.py         # Per-label threshold optimization
 ├── models/
 │   ├── toxicity_model.pth         # Trained model weights
 │   ├── vocab.json                 # Vocabulary mapping
 │   └── training_history.json      # Training/validation loss & metrics
 ├── app.py                         # Streamlit web application
+├── datainsight.py                 # Data insight generation utilities
+├── datainsight.txt                # Data insight output / notes
 ├── requirements.txt               # Python dependencies
 ├── README.md                      # Project documentation (this file)
 └── .gitignore                     # Git ignore rules
@@ -94,7 +97,7 @@ Comment Toxicity Detection/
 
 ---
 
-## 📦 Dataset
+## Dataset
 
 This project uses the **Jigsaw Toxic Comment Classification Challenge** dataset, originally published on Kaggle by Jigsaw/Google.
 
@@ -115,7 +118,7 @@ This project uses the **Jigsaw Toxic Comment Classification Challenge** dataset,
 
 ---
 
-## 🧠 Model Architecture
+## Model Architecture
 
 The model uses a **Bidirectional Long Short-Term Memory (BiLSTM)** architecture, which processes text sequences in both forward and backward directions to capture rich contextual information. This is particularly effective for understanding the nuanced semantics of toxic language.
 
@@ -151,7 +154,7 @@ The Jigsaw dataset is heavily imbalanced — `threat` has only ~0.3% positive sa
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -163,7 +166,7 @@ The Jigsaw dataset is heavily imbalanced — `threat` has only ~0.3% positive sa
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/comment-toxicity-detection.git
+git clone https://github.com/10Unknownboy/comment-toxicity-detection.git
 cd comment-toxicity-detection
 
 # Create a virtual environment
@@ -180,9 +183,6 @@ pip install -r requirements.txt
 ### Dataset
 
 The training data (`data/train.csv` and `data/test.csv`) is included in the repository. No separate download is required — simply clone the repo and you're ready to go.
-
-> **Source:** [Kaggle — Jigsaw Toxic Comment Classification](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data)
-
 ### Training (Google Colab — Recommended)
 
 Training the model on Google Colab is recommended for free GPU access. Since the dataset is included in the repo, you just need to clone and run:
@@ -205,7 +205,7 @@ Training the model on Google Colab is recommended for free GPU access. Since the
    !python -m src.train --epochs 5 --batch-size 256
    ```
 
-   > 💡 Use `--sample-size 160000` for faster training (~15 min on Colab GPU), or `--sample-size 0` for the full 560K dataset (~45 min).
+   > Tip: Use `--sample-size 160000` for faster training (~15 min on Colab GPU), or `--sample-size 0` for the full 560K dataset (~45 min).
 
 2. **Download the trained model files** from Colab's `models/` folder:
 
@@ -235,7 +235,7 @@ The app will launch in your browser at `http://localhost:8501`.
 
 ---
 
-## 💡 Usage
+## Usage
 
 ### Real-Time Prediction
 
@@ -263,7 +263,7 @@ The app will launch in your browser at `http://localhost:8501`.
 
 ---
 
-## 📊 Model Performance
+## Model Performance
 
 The BiLSTM model achieves strong performance across all toxicity categories:
 
@@ -294,7 +294,7 @@ The BiLSTM model achieves strong performance across all toxicity categories:
 
 ---
 
-## 💼 Business Use Cases
+## Business Use Cases
 
 | Use Case                  | Description                                                                 |
 |---------------------------|-----------------------------------------------------------------------------|
@@ -307,5 +307,5 @@ The BiLSTM model achieves strong performance across all toxicity categories:
 ---
 
 <p align="center">
-  Made with ❤️ for a safer internet
+  Made for a safer internet
 </p>

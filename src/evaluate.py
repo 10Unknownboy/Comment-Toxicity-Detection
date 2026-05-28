@@ -2,15 +2,12 @@
 Evaluation and visualisation utilities for Comment Toxicity Detection.
 
 Provides functions for:
-* Computing classification metrics (ROC-AUC, precision, recall, F1).
-* Plotting confusion matrices, ROC curves, and training history.
-* Generating formatted text reports.
+  - Computing classification metrics (ROC-AUC, precision, recall, F1).
+  - Plotting confusion matrices, ROC curves, and training history.
+  - Generating formatted text reports.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
-from typing import Any
 
 import matplotlib
 matplotlib.use("Agg")  # non-interactive backend (safe for Colab & servers)
@@ -34,38 +31,23 @@ from sklearn.metrics import (
 # Model evaluation
 # ===================================================================
 
-def evaluate_model(
-    model: torch.nn.Module,
-    dataloader: torch.utils.data.DataLoader,
-    device: torch.device,
-    label_columns: list[str],
-    thresholds: list[float] | None = None,
-) -> dict[str, Any]:
+def evaluate_model(model, dataloader, device, label_columns, thresholds=None):
     """Run inference on a dataloader and compute classification metrics.
 
-    Parameters
-    ----------
-    model : torch.nn.Module
-        Trained toxicity classifier (already on ``device``).
-    dataloader : DataLoader
-        Evaluation data loader yielding ``(texts, labels)`` batches.
-    device : torch.device
-        Device on which to perform inference.
-    label_columns : list[str]
-        Names of the label columns (length must match model output).
+    Takes a trained model (already on the target device), a DataLoader
+    yielding (texts, labels) batches, the inference device, and a list
+    of label column names.  An optional list of per-label thresholds
+    can be provided (defaults to 0.5 for all labels).
 
-    Returns
-    -------
-    dict[str, Any]
-        Dictionary containing:
-        - ``y_true``  – ground-truth labels ``(N, C)``
-        - ``y_pred``  – binary predictions ``(N, C)`` (per-label thresholds)
-        - ``y_proba`` – probabilities ``(N, C)``
-        - ``metrics``  – nested dict with per-label and macro scores
+    Returns a dict containing:
+      - y_true  -- ground-truth labels (N, C)
+      - y_pred  -- binary predictions (N, C)
+      - y_proba -- probabilities (N, C)
+      - metrics -- nested dict with per-label and macro scores
     """
     model.eval()
-    all_proba: list[np.ndarray] = []
-    all_true: list[np.ndarray] = []
+    all_proba = []
+    all_true = []
 
     with torch.no_grad():
         for batch in dataloader:
@@ -88,7 +70,7 @@ def evaluate_model(
         y_pred = (y_proba >= 0.5).astype(int)
 
     # --- Per-label metrics ---
-    metrics: dict[str, Any] = {"per_label": {}}
+    metrics = {"per_label": {}}
     for i, col in enumerate(label_columns):
         try:
             label_auc = roc_auc_score(y_true[:, i], y_proba[:, i])
@@ -137,24 +119,11 @@ def evaluate_model(
 # Confusion matrices
 # ===================================================================
 
-def plot_confusion_matrices(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    label_columns: list[str],
-    save_path: str | Path,
-) -> None:
-    """Plot a 2×3 grid of per-label confusion matrices and save as PNG.
+def plot_confusion_matrices(y_true, y_pred, label_columns, save_path):
+    """Plot a 2x3 grid of per-label confusion matrices and save as PNG.
 
-    Parameters
-    ----------
-    y_true : np.ndarray
-        Ground-truth binary labels ``(N, C)``.
-    y_pred : np.ndarray
-        Predicted binary labels ``(N, C)``.
-    label_columns : list[str]
-        Label names.
-    save_path : str or Path
-        Destination file path for the saved figure.
+    Takes ground-truth binary labels (N, C), predicted binary labels
+    (N, C), a list of label names, and the destination file path.
     """
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -204,24 +173,11 @@ def plot_confusion_matrices(
 # ROC curves
 # ===================================================================
 
-def plot_roc_curves(
-    y_true: np.ndarray,
-    y_proba: np.ndarray,
-    label_columns: list[str],
-    save_path: str | Path,
-) -> None:
+def plot_roc_curves(y_true, y_proba, label_columns, save_path):
     """Plot per-label ROC curves with AUC scores and save as PNG.
 
-    Parameters
-    ----------
-    y_true : np.ndarray
-        Ground-truth binary labels ``(N, C)``.
-    y_proba : np.ndarray
-        Predicted probabilities ``(N, C)``.
-    label_columns : list[str]
-        Label names.
-    save_path : str or Path
-        Destination file path for the saved figure.
+    Takes ground-truth binary labels (N, C), predicted probabilities
+    (N, C), a list of label names, and the destination file path.
     """
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -259,18 +215,11 @@ def plot_roc_curves(
 # Training history
 # ===================================================================
 
-def plot_training_history(
-    history: dict[str, list[float]],
-    save_path: str | Path,
-) -> None:
+def plot_training_history(history, save_path):
     """Plot training / validation loss and ROC-AUC over epochs.
 
-    Parameters
-    ----------
-    history : dict[str, list[float]]
-        Must contain keys ``train_loss``, ``val_loss``, and ``val_roc_auc``.
-    save_path : str or Path
-        Destination file path for the saved figure.
+    Takes a history dict (must contain keys train_loss, val_loss, and
+    val_roc_auc) and the destination file path for the saved figure.
     """
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -307,29 +256,15 @@ def plot_training_history(
 # Text report
 # ===================================================================
 
-def generate_classification_report(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    label_columns: list[str],
-) -> str:
+def generate_classification_report(y_true, y_pred, label_columns):
     """Return a formatted multi-label classification report.
 
-    Parameters
-    ----------
-    y_true : np.ndarray
-        Ground-truth binary labels ``(N, C)``.
-    y_pred : np.ndarray
-        Predicted binary labels ``(N, C)``.
-    label_columns : list[str]
-        Label names.
-
-    Returns
-    -------
-    str
-        Human-readable classification report.
+    Takes ground-truth binary labels (N, C), predicted binary labels
+    (N, C), and a list of label names.  Returns a human-readable
+    classification report string.
     """
     header = "=" * 60 + "\n  Classification Report – Comment Toxicity Detection\n" + "=" * 60 + "\n"
-    per_label_reports: list[str] = []
+    per_label_reports = []
 
     for i, col in enumerate(label_columns):
         report = classification_report(

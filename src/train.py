@@ -1,16 +1,14 @@
 """
 Training script for the Comment Toxicity Detection model.
 
-Designed to run on **Google Colab with a GPU**.  The script:
-1. Auto-detects CUDA and uses the best available device.
-2. Prepares data loaders (with optional sub-sampling).
-3. Trains a Bidirectional LSTM classifier with early stopping.
-4. Saves the best checkpoint, vocabulary, training history, and
-   evaluation plots so they can be downloaded from Colab.
+Designed to run on Google Colab with a GPU.  The script:
+  1. Auto-detects CUDA and uses the best available device.
+  2. Prepares data loaders (with optional sub-sampling).
+  3. Trains a Bidirectional LSTM classifier with early stopping.
+  4. Saves the best checkpoint, vocabulary, training history, and
+     evaluation plots so they can be downloaded from Colab.
 
-Usage (Colab cell)
-------------------
-::
+Usage (Colab cell)::
 
     !python -m src.train --epochs 5 --batch-size 256
 
@@ -19,8 +17,6 @@ Or simply::
     !python -m src.train
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import os
@@ -28,7 +24,6 @@ import random
 import sys
 import time
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import torch
@@ -58,13 +53,10 @@ from src.threshold_tuner import tune_thresholds_from_data
 # Reproducibility
 # ===================================================================
 
-def _set_seeds(seed: int) -> None:
+def _set_seeds(seed):
     """Set random seeds for Python, NumPy, and PyTorch for reproducibility.
 
-    Parameters
-    ----------
-    seed : int
-        The seed value to use across all random-number generators.
+    Takes a seed value to use across all random-number generators.
     """
     random.seed(seed)
     np.random.seed(seed)
@@ -79,19 +71,12 @@ def _set_seeds(seed: int) -> None:
 # Core training loop
 # ===================================================================
 
-def train_model(config: Config) -> dict[str, Any]:
+def train_model(config):
     """Train the toxicity classifier end-to-end.
 
-    Parameters
-    ----------
-    config : Config
-        Project configuration (hyper-parameters, paths, etc.).
-
-    Returns
-    -------
-    dict[str, Any]
-        Training history containing per-epoch train loss, validation
-        loss, and validation ROC-AUC.
+    Takes a Config object containing hyper-parameters and paths.
+    Returns a training history dict with per-epoch train loss,
+    validation loss, and validation ROC-AUC.
     """
     # ---- Reproducibility ----
     _set_seeds(config.RANDOM_SEED)
@@ -125,7 +110,7 @@ def train_model(config: Config) -> dict[str, Any]:
 
     # ---- Calculate class weights for imbalance ----
     print("[train] Calculating class weights from training data\u2026")
-    train_labels_list: list[np.ndarray] = []
+    train_labels_list = []
     for batch in train_loader:
         _, labels = batch
         train_labels_list.append(labels.numpy())
@@ -149,7 +134,7 @@ def train_model(config: Config) -> dict[str, Any]:
     print(f"[train] Learning rate: {lr} (0.5× default)")
 
     # ---- Training history ----
-    history: dict[str, list[float]] = {
+    history = {
         "train_loss": [],
         "val_loss": [],
         "val_roc_auc": [],
@@ -197,8 +182,8 @@ def train_model(config: Config) -> dict[str, Any]:
         model.eval()
         val_loss = 0.0
         val_batches = 0
-        all_val_proba: list[np.ndarray] = []
-        all_val_true: list[np.ndarray] = []
+        all_val_proba = []
+        all_val_true = []
 
         with torch.no_grad():
             for batch in tqdm(
@@ -247,14 +232,14 @@ def train_model(config: Config) -> dict[str, Any]:
             best_val_loss = avg_val_loss
             patience_counter = 0
             torch.save(model.state_dict(), model_save_path)
-            print(f"  ✓ Best model saved to {model_save_path}\n")
+            print(f"  [OK] Best model saved to {model_save_path}\n")
         else:
             patience_counter += 1
             print(
-                f"  ✗ No improvement ({patience_counter}/{config.EARLY_STOPPING_PATIENCE})\n"
+                f"  [--] No improvement ({patience_counter}/{config.EARLY_STOPPING_PATIENCE})\n"
             )
             if patience_counter >= config.EARLY_STOPPING_PATIENCE:
-                print("  ⚠ Early stopping triggered!\n")
+                print("  [STOP] Early stopping triggered.\n")
                 break
 
     # ---- Save training history ----
@@ -337,7 +322,7 @@ def train_model(config: Config) -> dict[str, Any]:
 
     # ---- Final instructions ----
     print("\n" + "=" * 60)
-    print("  ✅  TRAINING COMPLETE!")
+    print("  TRAINING COMPLETE")
     print("=" * 60)
     print("\n  Download these files from Colab:\n")
     print(f"    1. {model_save_path}")
@@ -358,14 +343,11 @@ def train_model(config: Config) -> dict[str, Any]:
 # CLI entry-point
 # ===================================================================
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args():
     """Parse command-line arguments for training overrides.
 
-    Returns
-    -------
-    argparse.Namespace
-        Parsed arguments with optional ``--epochs``, ``--sample-size``,
-        and ``--batch-size`` overrides.
+    Returns parsed arguments with optional --epochs, --sample-size,
+    and --batch-size overrides.
     """
     parser = argparse.ArgumentParser(
         description="Train the Toxicity Classifier (designed for Google Colab w/ GPU)."

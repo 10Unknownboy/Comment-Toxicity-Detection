@@ -1,21 +1,17 @@
 """
 Data preprocessing pipeline for Comment Toxicity Detection.
 
-Responsibilities
-----------------
-* Text cleaning (HTML, URLs, special characters)
-* Vocabulary construction, serialisation, and loading
-* Sequence encoding (token → index with padding / truncation)
-* PyTorch ``Dataset`` and ``DataLoader`` creation
+Responsibilities:
+  - Text cleaning (HTML, URLs, special characters)
+  - Vocabulary construction, serialisation, and loading
+  - Sequence encoding (token to index with padding / truncation)
+  - PyTorch Dataset and DataLoader creation
 """
-
-from __future__ import annotations
 
 import json
 import re
 from collections import Counter
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -28,35 +24,27 @@ from src.config import Config
 # ---------------------------------------------------------------------------
 # Special token indices
 # ---------------------------------------------------------------------------
-PAD_IDX: int = 0
-UNK_IDX: int = 1
+PAD_IDX = 0
+UNK_IDX = 1
 
 
 # ===================================================================
 # Text cleaning
 # ===================================================================
 
-def clean_text(text: str) -> str:
+def clean_text(text):
     """Normalise and clean a raw comment string.
 
     Processing steps (in order):
-    1. Convert to lowercase.
-    2. Strip HTML tags (``<…>``).
-    3. Remove URLs (``http…`` / ``www.…``).
-    4. Remove all characters that are not alphanumeric or whitespace.
-    5. Collapse multiple whitespace characters into a single space.
-    6. Strip leading / trailing whitespace.
+      1. Convert to lowercase.
+      2. Strip HTML tags.
+      3. Remove URLs.
+      4. Remove all characters that are not alphanumeric or whitespace.
+      5. Collapse multiple whitespace characters into a single space.
+      6. Strip leading / trailing whitespace.
 
-    Parameters
-    ----------
-    text : str
-        Raw comment text.  ``None`` or non-string values are coerced to
-        an empty string.
-
-    Returns
-    -------
-    str
-        Cleaned text ready for tokenisation.
+    Accepts a raw comment string.  None or non-string values are coerced
+    to an empty string.  Returns the cleaned text ready for tokenisation.
     """
     if not isinstance(text, str):
         return ""
@@ -73,47 +61,32 @@ def clean_text(text: str) -> str:
 # Vocabulary utilities
 # ===================================================================
 
-def build_vocabulary(texts: list[str], max_vocab: int) -> dict[str, int]:
-    """Build a word-to-index mapping from a list of *cleaned* texts.
+def build_vocabulary(texts, max_vocab):
+    """Build a word-to-index mapping from a list of cleaned texts.
 
-    Tokens are split on whitespace.  The ``max_vocab`` most-frequent
-    tokens are kept; indices start at **2** to reserve:
+    Tokens are split on whitespace.  The most-frequent tokens (up to
+    max_vocab) are kept; indices start at 2 to reserve 0 for PAD and
+    1 for UNK.
 
-    * 0 → ``<PAD>``
-    * 1 → ``<UNK>``
-
-    Parameters
-    ----------
-    texts : list[str]
-        Pre-cleaned text strings.
-    max_vocab : int
-        Maximum number of vocabulary entries (excluding PAD / UNK).
-
-    Returns
-    -------
-    dict[str, int]
-        Mapping from token string to integer index.
+    Takes a list of pre-cleaned text strings and the maximum vocabulary
+    size.  Returns a dict mapping token strings to integer indices.
     """
-    counter: Counter[str] = Counter()
+    counter = Counter()
     for t in texts:
         counter.update(t.split())
 
     most_common = counter.most_common(max_vocab)
-    word2idx: dict[str, int] = {
+    word2idx = {
         word: idx + 2 for idx, (word, _) in enumerate(most_common)
     }
     return word2idx
 
 
-def save_vocabulary(vocab: dict[str, int], path: str | Path) -> None:
+def save_vocabulary(vocab, path):
     """Persist a vocabulary dictionary to a JSON file.
 
-    Parameters
-    ----------
-    vocab : dict[str, int]
-        Word-to-index mapping produced by :func:`build_vocabulary`.
-    path : str or Path
-        Destination file path (will be created / overwritten).
+    Takes a word-to-index mapping and a destination file path
+    (will be created / overwritten).
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -121,23 +94,11 @@ def save_vocabulary(vocab: dict[str, int], path: str | Path) -> None:
         json.dump(vocab, fh, ensure_ascii=False)
 
 
-def load_vocabulary(path: str | Path) -> dict[str, int]:
+def load_vocabulary(path):
     """Load a vocabulary dictionary from a JSON file.
 
-    Parameters
-    ----------
-    path : str or Path
-        Path to the JSON vocabulary file.
-
-    Returns
-    -------
-    dict[str, int]
-        Word-to-index mapping.
-
-    Raises
-    ------
-    FileNotFoundError
-        If the vocabulary file does not exist.
+    Takes a path to the JSON vocabulary file.  Returns a word-to-index
+    mapping.  Raises FileNotFoundError if the file does not exist.
     """
     path = Path(path)
     if not path.exists():
@@ -150,30 +111,16 @@ def load_vocabulary(path: str | Path) -> dict[str, int]:
 # Encoding
 # ===================================================================
 
-def encode_text(
-    text: str,
-    vocab: dict[str, int],
-    max_len: int,
-) -> list[int]:
+def encode_text(text, vocab, max_len):
     """Convert a cleaned text string into a fixed-length list of token indices.
 
-    Unknown tokens are mapped to ``UNK_IDX`` (1).  Sequences shorter
-    than ``max_len`` are right-padded with ``PAD_IDX`` (0); longer
-    sequences are truncated.
+    Unknown tokens are mapped to UNK_IDX (1).  Sequences shorter than
+    max_len are right-padded with PAD_IDX (0); longer sequences are
+    truncated.
 
-    Parameters
-    ----------
-    text : str
-        A single cleaned text string.
-    vocab : dict[str, int]
-        Word-to-index mapping.
-    max_len : int
-        Desired output length.
-
-    Returns
-    -------
-    list[int]
-        Integer-encoded, padded / truncated sequence of length ``max_len``.
+    Takes a single cleaned text string, a word-to-index mapping, and
+    the desired output length.  Returns the integer-encoded, padded /
+    truncated sequence.
     """
     tokens = text.split()
     indices = [vocab.get(tok, UNK_IDX) for tok in tokens]
@@ -193,38 +140,23 @@ def encode_text(
 # ===================================================================
 
 class ToxicCommentsDataset(Dataset):
-    """PyTorch ``Dataset`` for encoded toxic-comment sequences.
+    """PyTorch Dataset for encoded toxic-comment sequences.
 
-    Parameters
-    ----------
-    encoded_texts : list[list[int]]
-        Token-index sequences, each of length ``max_len``.
-    labels : np.ndarray or None
-        Label matrix of shape ``(N, num_labels)``.  Pass ``None`` for
-        unlabelled / test-only data.
+    Takes a list of token-index sequences (each of length max_len) and
+    an optional label matrix of shape (N, num_labels).  Pass None for
+    unlabelled / test-only data.
     """
 
-    def __init__(
-        self,
-        encoded_texts: list[list[int]],
-        labels: Optional[np.ndarray] = None,
-    ) -> None:
+    def __init__(self, encoded_texts, labels=None):
         self.encoded_texts = encoded_texts
         self.labels = labels
 
-    def __len__(self) -> int:
+    def __len__(self):
         """Return the number of samples in the dataset."""
         return len(self.encoded_texts)
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, ...]:
-        """Return a single sample.
-
-        Returns
-        -------
-        tuple[torch.Tensor, ...]
-            ``(text_tensor,)`` when labels are absent, otherwise
-            ``(text_tensor, label_tensor)``.
-        """
+    def __getitem__(self, idx):
+        """Return a single sample as (text_tensor,) or (text_tensor, label_tensor)."""
         text_tensor = torch.tensor(self.encoded_texts[idx], dtype=torch.long)
 
         if self.labels is not None:
@@ -240,31 +172,21 @@ class ToxicCommentsDataset(Dataset):
 # DataLoader factory
 # ===================================================================
 
-def get_data_loaders(
-    config: Config,
-) -> tuple[DataLoader, DataLoader, DataLoader, dict[str, int]]:
-    """Prepare train / validation / test ``DataLoader`` objects.
+def get_data_loaders(config):
+    """Prepare train / validation / test DataLoader objects.
 
-    Workflow
-    --------
-    1. Read the training CSV.
-    2. Optionally sub-sample rows (``config.TRAIN_SAMPLE_SIZE``).
-    3. Clean all comment texts.
-    4. Split into train / val / test sets (stratified where possible).
-    5. Build vocabulary from the **training** split only.
-    6. Encode all splits.
-    7. Wrap in ``ToxicCommentsDataset`` → ``DataLoader``.
-    8. Save the vocabulary to ``models/vocab.json``.
+    Workflow:
+      1. Read the training CSV.
+      2. Optionally sub-sample rows (config.TRAIN_SAMPLE_SIZE).
+      3. Clean all comment texts.
+      4. Split into train / val / test sets (stratified where possible).
+      5. Build vocabulary from the training split only.
+      6. Encode all splits.
+      7. Wrap in ToxicCommentsDataset then DataLoader.
+      8. Save the vocabulary to models/vocab.json.
 
-    Parameters
-    ----------
-    config : Config
-        Project configuration object.
-
-    Returns
-    -------
-    tuple[DataLoader, DataLoader, DataLoader, dict[str, int]]
-        ``(train_loader, val_loader, test_loader, vocab)``
+    Takes a Config object.  Returns a tuple of
+    (train_loader, val_loader, test_loader, vocab).
     """
     # ---- 1. Load CSV ----
     csv_path = config.train_csv_path

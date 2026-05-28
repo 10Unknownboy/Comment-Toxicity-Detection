@@ -19,7 +19,7 @@ from pathlib import Path
 # ── Page configuration (MUST be the first Streamlit command) ────────────────
 st.set_page_config(
     page_title="Toxicity Detector",
-    page_icon="🛡️",
+    page_icon="shield",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -34,12 +34,12 @@ LABEL_COLUMNS = [
     "identity_hate",
 ]
 LABEL_DISPLAY = {
-    "toxic": "☠️ Toxic",
-    "severe_toxic": "💀 Severe Toxic",
-    "obscene": "🤬 Obscene",
-    "threat": "⚔️ Threat",
-    "insult": "🗯️ Insult",
-    "identity_hate": "🎭 Identity Hate",
+    "toxic": "Toxic",
+    "severe_toxic": "Severe Toxic",
+    "obscene": "Obscene",
+    "threat": "Threat",
+    "insult": "Insult",
+    "identity_hate": "Identity Hate",
 }
 PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_DIR = PROJECT_ROOT / "data"
@@ -49,7 +49,7 @@ MODEL_DIR = PROJECT_ROOT / "models"
 # ══════════════════════════════════════════════════════════════════════════════
 # CUSTOM CSS — Premium dark glassmorphism theme
 # ══════════════════════════════════════════════════════════════════════════════
-def inject_custom_css() -> None:
+def inject_custom_css():
     st.markdown(
         """
     <style>
@@ -246,11 +246,11 @@ def inject_custom_css() -> None:
 # HELPER WIDGETS
 # ══════════════════════════════════════════════════════════════════════════════
 
-def render_glass_card(content_html: str) -> None:
+def render_glass_card(content_html):
     st.markdown(f'<div class="glass-card result-anim">{content_html}</div>', unsafe_allow_html=True)
 
 
-def render_metric_card(label: str, value: str, color: str = "#667eea") -> str:
+def render_metric_card(label, value, color="#667eea"):
     return (
         f'<div class="metric-card" style="border-top:3px solid {color};">'
         f'<div class="metric-label">{label}</div>'
@@ -259,7 +259,7 @@ def render_metric_card(label: str, value: str, color: str = "#667eea") -> str:
     )
 
 
-def styled_divider() -> None:
+def styled_divider():
     st.markdown('<div class="styled-divider"></div>', unsafe_allow_html=True)
 
 
@@ -279,13 +279,13 @@ def get_model():
     try:
         return cached_load_model()
     except Exception as exc:
-        st.error(f"⚠️ Could not load model: {exc}")
+        st.error(f"Could not load model: {exc}")
         return None
 
 
 def show_model_missing_message():
     render_glass_card(
-        "<h3 style='color:#f87171;'>🔧 Model Not Found</h3>"
+        "<h3 style='color:#f87171;'>Model Not Found</h3>"
         "<p>The pre-trained model files were not detected in <code>models/</code>.</p>"
         "<p style='color:#9ca3af;'>To train the model, run:</p>"
         "<pre style='background:rgba(0,0,0,0.3);padding:14px;border-radius:8px;"
@@ -300,7 +300,7 @@ def show_model_missing_message():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @st.cache_data(show_spinner=False)
-def load_training_data() -> pd.DataFrame | None:
+def load_training_data():
     path = DATA_DIR / "train.csv"
     if not path.exists():
         return None
@@ -323,7 +323,7 @@ SEVERITY_SCALE = ["#10b981", "#34d399", "#fbbf24", "#f97316", "#ef4444", "#dc262
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE: 🏠 Real-Time Detection
+# PAGE: Real-Time Detection
 # ══════════════════════════════════════════════════════════════════════════════
 
 def page_realtime():
@@ -331,7 +331,7 @@ def page_realtime():
 
     # Hero section
     st.markdown(
-        '<h1 class="gradient-text hero-title">🛡️ Comment Toxicity Detector</h1>'
+        '<h1 class="gradient-text hero-title">Comment Toxicity Detector</h1>'
         '<p class="hero-subtitle">'
         "Analyse any comment for toxic language using a state-of-the-art BiLSTM deep-learning model. "
         "Paste or type a comment below to get instant predictions across six toxicity categories."
@@ -342,13 +342,13 @@ def page_realtime():
 
     # ── Preset examples ─────────────────────────────────────────────────────
     EXAMPLES = {
-        "💚 Clean comment": "Great article! I really enjoyed reading this and learned a lot. Thanks for sharing!",
-        "⚠️ Mildly toxic": "This is the stupidest thing I've ever read. You clearly have no idea what you're talking about.",
-        "🚨 Toxic comment": "You are an absolute idiot and a waste of space. Shut up and go away, nobody wants you here!",
-        "🎭 Identity attack": "All people of that group are terrible and should be removed from this platform permanently.",
+        "Clean comment": "Great article! I really enjoyed reading this and learned a lot. Thanks for sharing!",
+        "Mildly toxic": "This is the stupidest thing I've ever read. You clearly have no idea what you're talking about.",
+        "Toxic comment": "You are an absolute idiot and a waste of space. Shut up and go away, nobody wants you here!",
+        "Identity attack": "All people of that group are terrible and should be removed from this platform permanently.",
     }
 
-    st.markdown("##### 💡 Try a preset example")
+    st.markdown("##### Try a preset example")
     example_cols = st.columns(len(EXAMPLES))
     for idx, (btn_label, btn_text) in enumerate(EXAMPLES.items()):
         with example_cols[idx]:
@@ -359,14 +359,14 @@ def page_realtime():
 
     # ── Text input ───────────────────────────────────────────────────────────
     comment = st.text_area(
-        "✍️ Enter a comment to analyse",
+        "Enter a comment to analyse",
         value=st.session_state.get("comment_input", ""),
         height=140,
         placeholder="Type or paste a comment here…",
         key="comment_box",
     )
 
-    analyse_clicked = st.button("🔍  Analyse Comment")
+    analyse_clicked = st.button("Analyse Comment")
 
     # ── Prediction ───────────────────────────────────────────────────────────
     if analyse_clicked:
@@ -400,10 +400,10 @@ def page_realtime():
             )
         with col_label:
             label_color_map = {
-                "Clean ✅": "#10b981",
-                "Toxic ⚠️": "#f59e0b",
-                "Highly Toxic 🚨": "#ef4444",
-                "Threat Detected ⚔️": "#dc2626",
+                "Clean": "#10b981",
+                "Toxic": "#f59e0b",
+                "Highly Toxic": "#ef4444",
+                "Threat Detected": "#dc2626",
             }
             lc = label_color_map.get(label, "#667eea")
             st.markdown(
@@ -418,7 +418,7 @@ def page_realtime():
             render_glass_card(
                 "<div style='border-left:4px solid #ef4444;padding:12px 16px;'"
                 "background:rgba(239,68,68,0.08);'>"
-                "<strong style='color:#ef4444;'>\u26a0\ufe0f High Toxicity Detected</strong> \u2014 "
+                "<strong style='color:#ef4444;'>High Toxicity Detected</strong> \u2014 "
                 "This comment contains potentially harmful content."
                 "</div>"
             )
@@ -450,7 +450,7 @@ def page_realtime():
         st.plotly_chart(fig, width="stretch")
 
         # ── Severity table ───────────────────────────────────────────────────
-        st.markdown("##### 📋 Detailed Scores")
+        st.markdown("##### Detailed Scores")
         table_rows = ""
         for col in LABEL_COLUMNS:
             s = predictions[col]
@@ -489,7 +489,7 @@ def page_realtime():
         # \u2500\u2500 Subtle toxicity note \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
         st.markdown(
             "<p style='text-align:center;color:#6b7280;font-size:0.8rem;margin-top:12px;'>"
-            "\u2139\ufe0f Model may miss subtle, sarcastic, or context-dependent toxicity."
+            "Note: Model may miss subtle, sarcastic, or context-dependent toxicity."
             "</p>",
             unsafe_allow_html=True,
         )
@@ -498,12 +498,12 @@ def page_realtime():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE: 📊 Data Insights
+# PAGE: Data Insights
 # ══════════════════════════════════════════════════════════════════════════════
 
 def page_data_insights():
     st.markdown(
-        '<h1 class="gradient-text hero-title">📊 Data Insights</h1>'
+        '<h1 class="gradient-text hero-title">Data Insights</h1>'
         '<p class="hero-subtitle">Explore the training dataset and understand the distribution of toxic comments.</p>',
         unsafe_allow_html=True,
     )
@@ -512,7 +512,7 @@ def page_data_insights():
     df = load_training_data()
     if df is None:
         render_glass_card(
-            "<h3 style='color:#f87171;'>📂 Dataset Not Found</h3>"
+            "<h3 style='color:#f87171;'>Dataset Not Found</h3>"
             "<p>Could not locate <code>data/train.csv</code>. "
             "Please ensure the training data file is in the <code>data/</code> directory.</p>"
         )
@@ -595,7 +595,7 @@ def page_data_insights():
     styled_divider()
 
     # ── Correlation heatmap ──────────────────────────────────────────────────
-    st.markdown("##### 🔗 Label Correlation Matrix")
+    st.markdown("##### Label Correlation Matrix")
     corr = df[LABEL_COLUMNS].corr()
     display_labels = [LABEL_DISPLAY.get(c, c) for c in LABEL_COLUMNS]
 
@@ -631,7 +631,7 @@ def page_data_insights():
     st.plotly_chart(fig_corr, width="stretch")
 
     # ── Toxic vs Clean pie chart ─────────────────────────────────────────────
-    st.markdown("##### 🍩 Toxic vs Clean Breakdown")
+    st.markdown("##### Toxic vs Clean Breakdown")
     fig_pie = go.Figure(
         go.Pie(
             labels=["Clean", "Toxic"],
@@ -652,12 +652,12 @@ def page_data_insights():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE: 📈 Model Performance
+# PAGE: Model Performance
 # ══════════════════════════════════════════════════════════════════════════════
 
 def page_model_performance():
     st.markdown(
-        '<h1 class="gradient-text hero-title">📈 Model Performance</h1>'
+        '<h1 class="gradient-text hero-title">Model Performance</h1>'
         '<p class="hero-subtitle">Review evaluation metrics, confusion matrices, and ROC curves generated during training.</p>',
         unsafe_allow_html=True,
     )
@@ -671,7 +671,7 @@ def page_model_performance():
                 metrics = json.load(f)
 
             # Per-label table
-            st.markdown("##### 📋 Per-Label Metrics")
+            st.markdown("##### Per-Label Metrics")
 
             table_data = []
             for lbl in LABEL_COLUMNS:
@@ -704,7 +704,7 @@ def page_model_performance():
             overall = metrics.get("overall", metrics.get("macro", metrics.get("mean", {})))
             if overall:
                 styled_divider()
-                st.markdown("##### 🎯 Overall Metrics")
+                st.markdown("##### Overall Metrics")
                 ov_cols = st.columns(4)
                 metric_keys = [
                     ("Mean AUC-ROC", "mean_auc_roc", "auc_roc", "roc_auc", "mean_roc_auc"),
@@ -728,7 +728,7 @@ def page_model_performance():
             st.warning(f"Could not parse evaluation_results.json: {exc}")
     else:
         render_glass_card(
-            "<p style='color:#9ca3af;'>📄 <code>models/evaluation_results.json</code> not found. "
+            "<p style='color:#9ca3af;'><code>models/evaluation_results.json</code> not found. "
             "Run evaluation after training to generate metrics.</p>"
         )
 
@@ -744,25 +744,25 @@ def page_model_performance():
     for title, fname in image_items:
         img_path = MODEL_DIR / fname
         if img_path.exists():
-            st.markdown(f"##### 🖼️ {title}")
+            st.markdown(f"##### {title}")
             st.image(str(img_path), width="stretch")
             st.markdown("")
         else:
             render_glass_card(
-                f"<p style='color:#9ca3af;'>🖼️ <code>models/{fname}</code> not found. "
+                f"<p style='color:#9ca3af;'><code>models/{fname}</code> not found. "
                 f"This image is generated during training/evaluation.</p>"
             )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE: 📁 Bulk Prediction
+# PAGE: Bulk Prediction
 # ══════════════════════════════════════════════════════════════════════════════
 
 def page_bulk_prediction():
     from src.predict import predict_batch
 
     st.markdown(
-        '<h1 class="gradient-text hero-title">📁 Bulk Prediction</h1>'
+        '<h1 class="gradient-text hero-title">Bulk Prediction</h1>'
         '<p class="hero-subtitle">Upload a CSV file containing comments and get toxicity predictions for every row.</p>',
         unsafe_allow_html=True,
     )
@@ -776,7 +776,7 @@ def page_bulk_prediction():
     model, vocab, config, thresholds = result
 
     uploaded = st.file_uploader(
-        "📤 Upload CSV file",
+        "Upload CSV file",
         type=["csv"],
         help="The file should contain a text column with comments.",
     )
@@ -784,7 +784,7 @@ def page_bulk_prediction():
     if uploaded is None:
         render_glass_card(
             "<p style='color:#9ca3af;text-align:center;padding:30px 0;'>"
-            "⬆️ Upload a CSV to get started. The file must contain a column with comment text."
+            "Upload a CSV to get started. The file must contain a column with comment text."
             "</p>"
         )
         return
@@ -799,7 +799,7 @@ def page_bulk_prediction():
         st.warning("The uploaded CSV is empty.")
         return
 
-    st.markdown(f"✅ Loaded **{len(df):,}** rows &nbsp;|&nbsp; Columns: `{'`, `'.join(df.columns)}`")
+    st.markdown(f"Loaded **{len(df):,}** rows &nbsp;|&nbsp; Columns: `{'`, `'.join(df.columns)}`")
 
     # Column selection
     text_cols = df.select_dtypes(include="object").columns.tolist()
@@ -811,7 +811,7 @@ def page_bulk_prediction():
 
     selected_col = st.selectbox("Select the text column", text_cols, index=text_cols.index(default_col) if default_col else 0)
 
-    if st.button("🚀  Run Bulk Prediction", width="stretch"):
+    if st.button("Run Bulk Prediction", width="stretch"):
         # Clean data: remove NaN/empty values and strip whitespace
         df_clean = df.dropna(subset=[selected_col])
         df_clean[selected_col] = df_clean[selected_col].astype(str).str.strip()
@@ -890,13 +890,13 @@ def page_bulk_prediction():
             st.plotly_chart(fig_dist, width="stretch")
 
         # Dataframe display
-        st.markdown("##### 📄 Results Table")
+        st.markdown("##### Results Table")
         st.dataframe(results_df, width="stretch", height=420)
 
         # Download
         csv_bytes = results_df.to_csv(index=False).encode("utf-8")
         st.download_button(
-            label="⬇️  Download Results CSV",
+            label="Download Results CSV",
             data=csv_bytes,
             file_name="toxicity_predictions.csv",
             mime="text/csv",
@@ -916,7 +916,6 @@ def main():
     with st.sidebar:
         st.markdown(
             '<div style="text-align:center;padding:16px 0 8px;">'
-            '<span style="font-size:2.4rem;">🛡️</span><br>'
             '<span class="gradient-text" style="font-size:1.3rem;font-weight:700;">'
             "Toxicity Detector</span>"
             "</div>",
@@ -927,10 +926,10 @@ def main():
         page = st.radio(
             "Navigation",
             [
-                "🏠 Real-Time Detection",
-                "📊 Data Insights",
-                "📈 Model Performance",
-                "📁 Bulk Prediction",
+                "Real-Time Detection",
+                "Data Insights",
+                "Model Performance",
+                "Bulk Prediction",
             ],
             label_visibility="collapsed",
         )
@@ -941,7 +940,7 @@ def main():
         st.markdown(
             "<div style='position:fixed;bottom:20px;padding:0 16px;'>"
             "<p style='color:#6b7280;font-size:0.75rem;'>"
-            "🛡️ Toxicity Detector v1.0<br>"
+            "Toxicity Detector v1.0<br>"
             "Powered by BiLSTM + PyTorch"
             "</p></div>",
             unsafe_allow_html=True,
@@ -949,10 +948,10 @@ def main():
 
     # Route to selected page
     pages = {
-        "🏠 Real-Time Detection": page_realtime,
-        "📊 Data Insights": page_data_insights,
-        "📈 Model Performance": page_model_performance,
-        "📁 Bulk Prediction": page_bulk_prediction,
+        "Real-Time Detection": page_realtime,
+        "Data Insights": page_data_insights,
+        "Model Performance": page_model_performance,
+        "Bulk Prediction": page_bulk_prediction,
     }
 
     pages[page]()
