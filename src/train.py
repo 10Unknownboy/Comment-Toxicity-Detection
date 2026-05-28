@@ -160,6 +160,7 @@ def train_model(config):
             train_loader,
             desc=f"Epoch {epoch}/{config.EPOCHS} [train]",
             leave=True,
+            file=sys.stdout,
         )
         for batch in pbar:
             texts, labels = batch
@@ -190,6 +191,7 @@ def train_model(config):
                 val_loader,
                 desc=f"Epoch {epoch}/{config.EPOCHS} [val]",
                 leave=True,
+                file=sys.stdout,
             ):
                 texts, labels = batch
                 texts, labels = texts.to(device), labels.to(device)
