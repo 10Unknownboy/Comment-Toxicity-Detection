@@ -45,7 +45,7 @@ from src.evaluate import (
     plot_roc_curves,
     plot_training_history,
 )
-from src.model import ToxicityClassifier
+from src.model import ToxicityClassifier, FocalLoss
 from src.threshold_tuner import tune_thresholds_from_data
 
 
@@ -128,7 +128,7 @@ def train_model(config):
     print()
 
     # ---- Loss & optimiser ----
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weights_tensor)
+    criterion = FocalLoss(alpha=pos_weights_tensor, gamma=2.0)
     lr = config.LEARNING_RATE * 0.5  # reduced LR for stability
     optimiser = torch.optim.Adam(model.parameters(), lr=lr)
     print(f"[train] Learning rate: {lr} (0.5× default)")

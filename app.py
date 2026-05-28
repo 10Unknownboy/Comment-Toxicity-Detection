@@ -940,8 +940,9 @@ def main():
         st.markdown(
             "<div style='position:fixed;bottom:20px;padding:0 16px;'>"
             "<p style='color:#6b7280;font-size:0.75rem;'>"
-            "Toxicity Detector v1.0<br>"
-            "Powered by BiLSTM + PyTorch"
+            "Toxicity Detector <br>"
+            "Powered by BiLSTM + PyTorch <br>" "" \
+            "Developed by Manglesh Kumar Singh</b>" 
             "</p></div>",
             unsafe_allow_html=True,
         )

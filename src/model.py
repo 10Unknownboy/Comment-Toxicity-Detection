@@ -12,6 +12,36 @@ probabilities for each of the six toxicity labels.
 import torch
 import torch.nn as nn
 
+import torch.nn.functional as F
+
+class FocalLoss(nn.Module):
+    """Focal Loss for multi-label binary classification.
+    
+    Dynamically scales the loss based on prediction confidence to focus
+    training on hard, rare examples while down-weighting easy negatives.
+    """
+    def __init__(self, alpha=None, gamma=2.0, reduction="mean"):
+        super().__init__()
+        self.alpha = alpha  # Tensor of positive weights per label
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, logits, targets):
+        bce_loss = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
+        pt = torch.exp(-bce_loss)  # probability of the true class
+        focal_loss = ((1 - pt) ** self.gamma) * bce_loss
+
+        if self.alpha is not None:
+            # Apply positive class weighting
+            alpha_t = targets * self.alpha + (1 - targets) * 1.0
+            focal_loss = alpha_t * focal_loss
+
+        if self.reduction == "mean":
+            return focal_loss.mean()
+        elif self.reduction == "sum":
+            return focal_loss.sum()
+        else:
+            return focal_loss
 
 class ToxicityClassifier(nn.Module):
     """Multi-label toxicity classifier built on a Bidirectional LSTM.
