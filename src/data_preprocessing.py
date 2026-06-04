@@ -225,6 +225,8 @@ def augment_synonym_replace(text, n=2):
             continue
         synonyms = set()
         for syn in synsets:
+            if syn is None:
+                continue
             for lemma in syn.lemmas():
                 name = lemma.name().replace("_", " ").lower()
                 if name != word:

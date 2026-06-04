@@ -135,12 +135,15 @@ def predict_batch(texts, model, vocab, config, thresholds=None):
     results = []
     for t in texts:
         preds = predict_single(t, model, vocab, config)
-        preds["text"] = t
-        preds["overall_toxicity"] = max(
-            preds.get(c, 0.0) for c in config.LABEL_COLUMNS
-        )
-        preds["label"] = get_toxicity_label(preds, thresholds=thresholds)
-        results.append(preds)
+        row = {
+            **preds,
+            "text": t,
+            "overall_toxicity": max(
+                preds.get(c, 0.0) for c in config.LABEL_COLUMNS
+            ),
+            "label": get_toxicity_label(preds, thresholds=thresholds),
+        }
+        results.append(row)
 
     df = pd.DataFrame(results)
     cols = ["text"] + config.LABEL_COLUMNS + ["overall_toxicity", "label"]

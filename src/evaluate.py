@@ -161,7 +161,7 @@ def plot_confusion_matrices(
     fig.suptitle(
         "Confusion Matrices (per label)", fontsize=16, fontweight="bold",
     )
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.tight_layout(rect=(0, 0, 1, 0.95))
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     logger.info("[eval] Confusion matrices saved to %s", save_path)
@@ -199,8 +199,8 @@ def plot_roc_curves(
             pass
 
     ax.plot([0, 1], [0, 1], "w--", lw=1, alpha=0.5, label="Random Baseline")
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
+    ax.set_xlim((0.0, 1.0))
+    ax.set_ylim((0.0, 1.05))
     ax.set_xlabel("False Positive Rate", fontsize=12)
     ax.set_ylabel("True Positive Rate", fontsize=12)
     ax.set_title("ROC Curves - Per Label", fontsize=15, fontweight="bold")

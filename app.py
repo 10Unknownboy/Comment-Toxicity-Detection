@@ -15,6 +15,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pathlib import Path
+from typing import Any
 
 # ── Page configuration (MUST be the first Streamlit command) ────────────────
 st.set_page_config(
@@ -310,7 +311,7 @@ def load_training_data():
 # ══════════════════════════════════════════════════════════════════════════════
 # PLOTLY THEME HELPER
 # ══════════════════════════════════════════════════════════════════════════════
-PLOTLY_LAYOUT = dict(
+PLOTLY_LAYOUT: dict[str, Any] = dict(
     template="plotly_dark",
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
@@ -446,7 +447,7 @@ def page_realtime():
             yaxis=dict(autorange="reversed"),
             height=340,
         )
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
         # ── Severity table ───────────────────────────────────────────────────
         st.markdown("##### Detailed Scores")
