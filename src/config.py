@@ -61,13 +61,13 @@ class Config:
         # ── Training ───────────────────────────────────────────────
         BATCH_SIZE: int = 256,
         EPOCHS: int = 8,
-        LEARNING_RATE: float = 5e-4,
+        LEARNING_RATE: float = 1e-4,
         TRAIN_SAMPLE_SIZE: int | None = None,  # None = full dataset
         VAL_SPLIT: float = 0.10,
         TEST_SPLIT: float = 0.10,
         RANDOM_SEED: int = 42,
         # ── Loss function ──────────────────────────────────────────
-        USE_FOCAL_LOSS: bool = False,
+        USE_FOCAL_LOSS: bool = True,
         FOCAL_GAMMA: float = 2.0,
         FOCAL_ALPHA: float = 0.25,
         LABEL_SMOOTHING: float = 0.05,
@@ -78,7 +78,7 @@ class Config:
         LR_SCHEDULER_PATIENCE: int = 2,
         MIN_LR: float = 1e-6,
         # ── Early stopping ─────────────────────────────────────────
-        EARLY_STOPPING_PATIENCE: int = 3,
+        EARLY_STOPPING_PATIENCE: int = 5,
         EARLY_STOPPING_MIN_DELTA: float = 0.001,
         # ── Augmentation ───────────────────────────────────────────
         AUGMENT_RARE_CLASSES: bool = True,
@@ -86,7 +86,7 @@ class Config:
         AUGMENT_TARGET_IDENTITY_HATE: int = 2500,
         # ── Threshold tuner ────────────────────────────────────────
         THRESHOLD_STEP: float = 0.01,
-        MIN_PRECISION_FLOOR: float = 0.40,
+        MIN_PRECISION_FLOOR: float = 0.10,
         # ── Mixed precision ────────────────────────────────────────
         USE_AMP: bool | None = None,  # None = auto-detect
         # ── Labels ─────────────────────────────────────────────────
