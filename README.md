@@ -12,18 +12,17 @@
 ## Table of Contents
 
 - [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Dataset](#dataset)
-- [Model Architecture](#model-architecture)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Dataset Setup](#dataset-setup)
   - [Training (Google Colab)](#training-google-colab)
   - [Running the App](#running-the-app)
+- [Model Architecture](#model-architecture)
 - [Usage](#usage)
+- [Tech Stack](#tech-stack)
 - [Model Performance](#model-performance)
 - [Business Use Cases](#business-use-cases)
 - [Contributing](#contributing)
@@ -40,32 +39,7 @@ The objective of this project is to build a deep learning-based comment toxicity
 
 ## Overview
 
-This project implements a **Bidirectional LSTM (BiLSTM)** deep learning model trained on the Jigsaw Toxic Comment Classification dataset to perform **multi-label toxicity classification** across six categories. The trained model is served through an **interactive Streamlit web application** that supports real-time single-comment analysis, bulk CSV prediction, and comprehensive model performance visualization — providing a complete, end-to-end solution for comment toxicity detection.
-
----
-
-## Features
-
-- **Real-Time Toxicity Detection** — Instantly analyze any comment for toxic content with probability scores across all six categories.
-- **6-Label Multi-Label Classification** — Simultaneously detects `toxic`, `severe_toxic`, `obscene`, `threat`, `insult`, and `identity_hate`.
-- **Interactive Streamlit Dashboard** — A polished, user-friendly web interface for exploring predictions and model insights.
-- **Bulk CSV Prediction** — Upload a CSV file of comments and get toxicity predictions for every row in one go.
-- **Model Performance Visualization** — Interactive charts showing training history, ROC curves, confusion matrices, and per-label metrics.
-
----
-
-## Tech Stack
-
-| Technology    | Version | Purpose                          |
-|---------------|---------|----------------------------------|
-| Python        | 3.13    | Core programming language        |
-| PyTorch       | 2.9     | Deep learning framework          |
-| Streamlit     | 1.54    | Web application framework        |
-| scikit-learn  | 1.3+    | Metrics and evaluation           |
-| Matplotlib    | 3.7+    | Static plotting and charts       |
-| Plotly        | 5.15+   | Interactive visualizations        |
-| Pandas        | 2.0+    | Data manipulation and analysis   |
-| NumPy         | 1.24+   | Numerical computing              |
+This project implements a **Bidirectional LSTM (BiLSTM)** deep learning model trained on the Toxic Comment Classification dataset to perform **multi-label toxicity classification** across six categories. The trained model is served through an **interactive Streamlit web application** that supports real-time single-comment analysis, bulk CSV prediction, and comprehensive model performance visualization — providing a complete, end-to-end solution for comment toxicity detection.
 
 ---
 
@@ -76,6 +50,9 @@ Comment Toxicity Detection/
 ├── data/
 │   ├── train.csv                  # Training dataset (~560K comments)
 │   └── test.csv                   # Test dataset
+├── demo/
+│   ├── realtime.gif               # Real-time prediction demo
+│   └── bulk.gif                   # Bulk prediction demo
 ├── src/
 │   ├── __init__.py                # Package initializer
 │   ├── config.py                  # Hyperparameters & configuration
@@ -91,7 +68,7 @@ Comment Toxicity Detection/
 │   └── training_history.json      # Training/validation loss & metrics
 ├── app.py                         # Streamlit web application
 ├── datainsight.py                 # Data insight generation utilities
-├── datainsight.txt                # Data insight output / notes
+├── bulk_comments.csv              # Example bulk CSV for testing
 ├── requirements.txt               # Python dependencies
 ├── README.md                      # Project documentation (this file)
 └── .gitignore                     # Git ignore rules
@@ -116,42 +93,6 @@ This project uses the ** Toxic Comment Classification Challenge** dataset.
 | `identity_hate` | Hatred targeting a specific identity group               |
 
 > **Note:** The dataset exhibits significant class imbalance — the majority of comments are non-toxic, and categories like `threat` and `identity_hate` are relatively rare.
-
----
-
-## Model Architecture
-
-The model uses a **Bidirectional Long Short-Term Memory (BiLSTM)** architecture, which processes text sequences in both forward and backward directions to capture rich contextual information. This is particularly effective for understanding the nuanced semantics of toxic language.
-
-### Architecture Pipeline
-
-```
-Input Text
-    → Tokenization (word-level, max 200 tokens)
-    → Embedding Layer (128-dimensional, learnable)
-    → Bidirectional LSTM (2 layers, 128 hidden units per direction)
-    → Dropout (0.3)
-    → Fully Connected (256 → 64 → 6)
-    → Sigmoid Activation
-    → 6 Toxicity Probabilities
-```
-
-### Key Design Choices
-
-- **Embedding Dimension (128):** Balances representational power with training efficiency.
-- **Bidirectional LSTM:** Captures context from both preceding and following words, critical for understanding negation, sarcasm, and complex sentence structures.
-- **2 LSTM Layers:** Enables hierarchical feature learning — lower layers capture surface-level patterns, upper layers learn abstract semantic features.
-- **Dropout (0.3):** Prevents overfitting, especially important given the class imbalance in the dataset.
-- **BCEWithLogitsLoss + pos_weight:** Handles severe class imbalance (e.g. `threat` at 1:430 ratio) by weighting rare positive examples more heavily during training.
-- **Per-label decision thresholds:** Instead of a universal 0.5 cutoff, optimal thresholds are tuned per label on the validation set by maximising F1 score.
-
-### Class Imbalance Handling
-
-The Jigsaw dataset is heavily imbalanced — `threat` has only ~0.3% positive samples. The pipeline addresses this with:
-
-1. **Weighted BCE Loss** — `pos_weight` per label calculated as `neg_count / pos_count`, giving rare classes proportionally higher loss.
-2. **Threshold Tuning** — After training, `src/threshold_tuner.py` sweeps thresholds 0.05–0.95 per label and selects the value that maximises F1 on the validation set. Results are saved to `models/thresholds.json`.
-3. **Per-label thresholds in inference** — `predict.py` and `app.py` load `thresholds.json` and apply label-specific cutoffs.
 
 ---
 
@@ -181,9 +122,10 @@ env\Scripts\activate        # Windows
 pip install -r requirements.txt
 ```
 
-### Dataset
+### Dataset Setup
 
 The training data (`data/train.csv` and `data/test.csv`) is included in the repository. No separate download is required — simply clone the repo and you're ready to go.
+
 ### Training (Google Colab — Recommended)
 
 Training the model on Google Colab is recommended for free GPU access. Since the dataset is included in the repo, you just need to clone and run:
@@ -236,22 +178,70 @@ The app will launch in your browser at `http://localhost:8501`.
 
 ---
 
+## Model Architecture
+
+The model uses a **Bidirectional Long Short-Term Memory (BiLSTM)** architecture, which processes text sequences in both forward and backward directions to capture rich contextual information. This is particularly effective for understanding the nuanced semantics of toxic language.
+
+### Architecture Pipeline
+
+```
+Input Text
+    → Tokenization (word-level, max 200 tokens)
+    → Embedding Layer (128-dimensional, learnable)
+    → Bidirectional LSTM (2 layers, 128 hidden units per direction)
+    → Dropout (0.3)
+    → Fully Connected (256 → 64 → 6)
+    → Sigmoid Activation
+    → 6 Toxicity Probabilities
+```
+
+### Key Design Choices
+
+- **Embedding Dimension (128):** Balances representational power with training efficiency.
+- **Bidirectional LSTM:** Captures context from both preceding and following words, critical for understanding negation, sarcasm, and complex sentence structures.
+- **2 LSTM Layers:** Enables hierarchical feature learning — lower layers capture surface-level patterns, upper layers learn abstract semantic features.
+- **Dropout (0.3):** Prevents overfitting, especially important given the class imbalance in the dataset.
+- **BCEWithLogitsLoss + pos_weight:** Handles severe class imbalance (e.g. `threat` at 1:430 ratio) by weighting rare positive examples more heavily during training.
+- **Per-label decision thresholds:** Instead of a universal 0.5 cutoff, optimal thresholds are tuned per label on the validation set by maximising F1 score.
+
+### Class Imbalance Handling
+
+The dataset is heavily imbalanced — `threat` has only ~0.3% positive samples. The pipeline addresses this with:
+
+1. **Weighted BCE Loss** — `pos_weight` per label calculated as `neg_count / pos_count`, giving rare classes proportionally higher loss.
+2. **Threshold Tuning** — After training, `src/threshold_tuner.py` sweeps thresholds 0.05–0.95 per label and selects the value that maximises F1 on the validation set. Results are saved to `models/thresholds.json`.
+3. **Per-label thresholds in inference** — `predict.py` and `app.py` load `thresholds.json` and apply label-specific cutoffs.
+
+---
+
 ## Usage
 
 ### Real-Time Prediction
 
+Experience instant toxicity detection with a premium, glassmorphism interface.
+
+<div align="center">
+  <img src="demo/realtime.gif" alt="Real-Time Prediction Demo" width="800">
+</div>
+
 1. Navigate to the **"Real-Time Prediction"** tab in the Streamlit app.
-2. Type or paste a comment into the text input field.
-3. Click **"Analyze"** to get instant toxicity predictions.
+2. Type or paste a comment into the text input field, or click on a preset example button.
+3. Click **"Analyse Comment"** to get instant toxicity predictions.
 4. View probability scores and toxicity labels for all six categories, displayed as interactive bar charts and color-coded badges.
 
 ### Bulk Prediction
 
+Efficiently process large datasets of comments in a single batch.
+
+<div align="center">
+  <img src="demo/bulk.gif" alt="Bulk Prediction Demo" width="800">
+</div>
+
 1. Navigate to the **"Bulk Prediction"** tab.
-2. Upload a CSV file containing a column of comments.
+2. Upload a CSV file containing a column of comments (you can use `bulk_comments.csv` as a test).
 3. Select the column containing the comment text.
-4. Click **"Run Predictions"** to process all comments.
-5. Download the results as a CSV with appended toxicity scores for each label.
+4. Click **"Run Bulk Prediction"** to process all comments.
+5. View distribution charts and download the results as a CSV with appended toxicity scores for each label.
 
 ### Model Insights
 
@@ -261,6 +251,21 @@ The app will launch in your browser at `http://localhost:8501`.
    - ROC-AUC curves per label
    - Confusion matrices
    - Per-label precision, recall, and F1 scores
+
+---
+
+## Tech Stack
+
+| Technology    | Version | Purpose                          |
+|---------------|---------|----------------------------------|
+| Python        | 3.13    | Core programming language        |
+| PyTorch       | 2.9     | Deep learning framework          |
+| Streamlit     | 1.54    | Web application framework        |
+| scikit-learn  | 1.3+    | Metrics and evaluation           |
+| Matplotlib    | 3.7+    | Static plotting and charts       |
+| Plotly        | 5.15+   | Interactive visualizations        |
+| Pandas        | 2.0+    | Data manipulation and analysis   |
+| NumPy         | 1.24+   | Numerical computing              |
 
 ---
 
@@ -290,7 +295,7 @@ The BiLSTM model achieves strong performance across all toxicity categories:
 ### Known Limitations
 
 - **Subtle/sarcastic toxicity:** Phrases like "Nobody asked for your opinion" may score low despite being passive-aggressive.
-- **Context dependence:** The model analyses individual comments without conversation context.
+- **Context dependence:** The model analyzes individual comments without conversation context.
 - **Rare classes:** `threat` and `identity_hate` have very few training examples; performance is inherently limited.
 
 ---
