@@ -72,6 +72,9 @@ class AttentionLayer(nn.Module):
         scores = self.score(lstm_output)
 
         if mask is not None:
+            # If a sequence is completely padded, unmask it to prevent softmax returning NaN
+            all_masked = mask.all(dim=-1, keepdim=True)
+            mask = mask & ~all_masked
             scores = scores.masked_fill(mask.unsqueeze(-1), float("-inf"))
 
         # weights: (batch, seq_len, 1)
