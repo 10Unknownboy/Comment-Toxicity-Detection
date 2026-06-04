@@ -147,7 +147,6 @@ def train_model(config: Config) -> dict[str, list[float]]:
         factor=config.LR_SCHEDULER_FACTOR,
         patience=config.LR_SCHEDULER_PATIENCE,
         min_lr=config.MIN_LR,
-        verbose=False,
     )
 
     # ── Mixed precision ───────────────────────────────────────────
