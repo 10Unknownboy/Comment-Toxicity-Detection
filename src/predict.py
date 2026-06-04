@@ -157,24 +157,24 @@ def get_toxicity_label(predictions, thresholds=None):
     Uses per-label thresholds from thresholds.json.
     """
     if not predictions:
-        return "Clean ✅"
+        return "Clean"
 
     if thresholds is None:
         thresholds = {k: 0.5 for k in predictions}
 
     if predictions.get("severe_toxic", 0.0) >= thresholds.get("severe_toxic", 0.5):
-        return "Highly Toxic 🚨"
+        return "Highly Toxic"
     if predictions.get("threat", 0.0) >= thresholds.get("threat", 0.5):
-        return "Threat Detected ⚔️"
+        return "Threat Detected"
 
     for label, score in predictions.items():
         if label in ("text", "overall_toxicity", "label"):
             continue
         t = thresholds.get(label, 0.5)
         if score >= t:
-            return "Toxic ⚠️"
+            return "Toxic"
 
-    return "Clean ✅"
+    return "Clean"
 
 
 def get_severity_color(score):

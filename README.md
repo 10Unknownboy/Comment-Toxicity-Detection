@@ -101,9 +101,8 @@ Comment Toxicity Detection/
 
 ## Dataset
 
-This project uses the **Jigsaw Toxic Comment Classification Challenge** dataset, originally published on Kaggle by Jigsaw/Google.
+This project uses the ** Toxic Comment Classification Challenge** dataset.
 
-- **Source:** [Kaggle — Jigsaw Toxic Comment Classification](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge)
 - **Size:** ~560,000 comments from Wikipedia Talk pages
 - **Labels:** 6 binary labels (a comment can have multiple labels simultaneously)
 
@@ -193,7 +192,7 @@ Training the model on Google Colab is recommended for free GPU access. Since the
 
    ```python
    # Cell 1: Clone the repository
-   !git clone https://github.com/yourusername/Comment-Toxicity-Detection.git
+   !git clone https://github.com/10Unknownboy/Comment-Toxicity-Detection.git
    %cd Comment-Toxicity-Detection
    ```
 

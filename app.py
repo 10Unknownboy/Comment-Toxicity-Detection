@@ -343,9 +343,9 @@ def page_realtime():
     # ── Preset examples ─────────────────────────────────────────────────────
     EXAMPLES = {
         "Clean comment": "Great article! I really enjoyed reading this and learned a lot. Thanks for sharing!",
-        "Mildly toxic": "This is the stupidest thing I've ever read. You clearly have no idea what you're talking about.",
+        "Mildly toxic": "Go get a job lazy bum, stop spamming the forum with your nonsense.",
         "Toxic comment": "You are an absolute idiot and a waste of space. Shut up and go away, nobody wants you here!",
-        "Identity attack": "All people of that group are terrible and should be removed from this platform permanently.",
+        "Identity attack": "SHUT UP, YOU FAT POOP, OR I WILL KICK YOUR ASS!!!",
     }
 
     st.markdown("##### Try a preset example")
