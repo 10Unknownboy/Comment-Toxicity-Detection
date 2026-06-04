@@ -36,9 +36,9 @@ class FocalLoss(nn.Module):
 
     Parameters
     ----------
-    alpha : torch.Tensor or None
-        Per-label positive-class weight tensor of shape ``(num_labels,)``.
-        If ``None``, no class weighting is applied.
+    alpha : float or torch.Tensor or None
+        Weighting factor for the positive class. Standard is 0.25.
+        If ``None``, no alpha weighting is applied.
     gamma : float
         Focusing parameter.  ``gamma=0`` recovers standard BCE;
         higher values increasingly down-weight easy examples.
@@ -48,7 +48,7 @@ class FocalLoss(nn.Module):
 
     def __init__(
         self,
-        alpha: torch.Tensor | None = None,
+        alpha: float | torch.Tensor | None = 0.25,
         gamma: float = 2.0,
         reduction: str = "mean",
     ):
@@ -79,8 +79,8 @@ class FocalLoss(nn.Module):
         focal = ((1.0 - pt) ** self.gamma) * bce
 
         if self.alpha is not None:
-            # alpha_t: positive-class weight for 1-labels, 1.0 for 0-labels
-            alpha_t = targets * self.alpha + (1.0 - targets) * 1.0
+            # Standard focal loss alpha weighting
+            alpha_t = targets * self.alpha + (1.0 - targets) * (1.0 - self.alpha)
             focal = alpha_t * focal
 
         if self.reduction == "mean":
@@ -190,10 +190,10 @@ def get_loss_function(
 
     if config.USE_FOCAL_LOSS:
         logger.info(
-            "Using FocalLoss (gamma=%.1f, alpha from pos_weights)",
-            config.FOCAL_GAMMA,
+            "Using FocalLoss (gamma=%.1f, alpha=%.2f)",
+            config.FOCAL_GAMMA, config.FOCAL_ALPHA
         )
-        return FocalLoss(alpha=pw, gamma=config.FOCAL_GAMMA)
+        return FocalLoss(alpha=config.FOCAL_ALPHA, gamma=config.FOCAL_GAMMA)
 
     logger.info("Using BCEWithLogitsLoss with sqrt-dampened pos_weight")
     return nn.BCEWithLogitsLoss(pos_weight=pw)
