@@ -7,14 +7,17 @@ Provides functions for:
   - Generating formatted text reports.
 """
 
+from __future__ import annotations
+
+import logging
 from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")  # non-interactive backend (safe for Colab & servers)
-import matplotlib.pyplot as plt
-import numpy as np
-import torch
-from sklearn.metrics import (
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
+from sklearn.metrics import (  # noqa: E402
     accuracy_score,
     auc,
     classification_report,
@@ -26,28 +29,46 @@ from sklearn.metrics import (
     roc_curve,
 )
 
+logger = logging.getLogger(__name__)
+
+# Type alias
+_Metrics = dict[str, dict | float]
+
 
 # ===================================================================
 # Model evaluation
 # ===================================================================
 
-def evaluate_model(model, dataloader, device, label_columns, thresholds=None):
-    """Run inference on a dataloader and compute classification metrics.
+def evaluate_model(
+    model: torch.nn.Module,
+    dataloader: torch.utils.data.DataLoader,
+    device: torch.device,
+    label_columns: list[str],
+    thresholds: list[float] | None = None,
+) -> dict[str, np.ndarray | _Metrics]:
+    """Run inference on a DataLoader and compute classification metrics.
 
-    Takes a trained model (already on the target device), a DataLoader
-    yielding (texts, labels) batches, the inference device, and a list
-    of label column names.  An optional list of per-label thresholds
-    can be provided (defaults to 0.5 for all labels).
+    Parameters
+    ----------
+    model : nn.Module
+        Trained model (outputs raw logits).
+    dataloader : DataLoader
+        Yields ``(texts, labels)`` batches.
+    device : torch.device
+        Inference device.
+    label_columns : list[str]
+        Label column names.
+    thresholds : list[float] or None
+        Per-label decision thresholds.  Defaults to 0.5 for all.
 
-    Returns a dict containing:
-      - y_true  -- ground-truth labels (N, C)
-      - y_pred  -- binary predictions (N, C)
-      - y_proba -- probabilities (N, C)
-      - metrics -- nested dict with per-label and macro scores
+    Returns
+    -------
+    dict
+        Keys: ``y_true``, ``y_pred``, ``y_proba``, ``metrics``.
     """
     model.eval()
-    all_proba = []
-    all_true = []
+    all_proba: list[np.ndarray] = []
+    all_true: list[np.ndarray] = []
 
     with torch.no_grad():
         for batch in dataloader:
@@ -69,8 +90,8 @@ def evaluate_model(model, dataloader, device, label_columns, thresholds=None):
     else:
         y_pred = (y_proba >= 0.5).astype(int)
 
-    # --- Per-label metrics ---
-    metrics = {"per_label": {}}
+    # ── Per-label metrics ─────────────────────────────────────────
+    metrics: _Metrics = {"per_label": {}}
     for i, col in enumerate(label_columns):
         try:
             label_auc = roc_auc_score(y_true[:, i], y_proba[:, i])
@@ -81,15 +102,15 @@ def evaluate_model(model, dataloader, device, label_columns, thresholds=None):
             "roc_auc": label_auc,
             "accuracy": accuracy_score(y_true[:, i], y_pred[:, i]),
             "precision": precision_score(
-                y_true[:, i], y_pred[:, i], zero_division=0
+                y_true[:, i], y_pred[:, i], zero_division=0,
             ),
             "recall": recall_score(
-                y_true[:, i], y_pred[:, i], zero_division=0
+                y_true[:, i], y_pred[:, i], zero_division=0,
             ),
             "f1": f1_score(y_true[:, i], y_pred[:, i], zero_division=0),
         }
 
-    # --- Macro averages ---
+    # ── Macro averages ────────────────────────────────────────────
     try:
         macro_auc = roc_auc_score(y_true, y_proba, average="macro")
     except ValueError:
@@ -99,10 +120,10 @@ def evaluate_model(model, dataloader, device, label_columns, thresholds=None):
         "roc_auc": macro_auc,
         "accuracy": accuracy_score(y_true.ravel(), y_pred.ravel()),
         "precision": precision_score(
-            y_true, y_pred, average="macro", zero_division=0
+            y_true, y_pred, average="macro", zero_division=0,
         ),
         "recall": recall_score(
-            y_true, y_pred, average="macro", zero_division=0
+            y_true, y_pred, average="macro", zero_division=0,
         ),
         "f1": f1_score(y_true, y_pred, average="macro", zero_division=0),
     }
@@ -119,11 +140,24 @@ def evaluate_model(model, dataloader, device, label_columns, thresholds=None):
 # Confusion matrices
 # ===================================================================
 
-def plot_confusion_matrices(y_true, y_pred, label_columns, save_path):
-    """Plot a 2x3 grid of per-label confusion matrices and save as PNG.
+def plot_confusion_matrices(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    label_columns: list[str],
+    save_path: str | Path,
+) -> None:
+    """Plot a 2×3 grid of per-label confusion matrices and save as PNG.
 
-    Takes ground-truth binary labels (N, C), predicted binary labels
-    (N, C), a list of label names, and the destination file path.
+    Parameters
+    ----------
+    y_true : np.ndarray
+        Ground-truth binary labels ``(N, C)``.
+    y_pred : np.ndarray
+        Predicted binary labels ``(N, C)``.
+    label_columns : list[str]
+        Label names.
+    save_path : str or Path
+        Destination file path.
     """
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -135,7 +169,9 @@ def plot_confusion_matrices(y_true, y_pred, label_columns, save_path):
     for i, (col, ax) in enumerate(zip(label_columns, axes)):
         cm = confusion_matrix(y_true[:, i], y_pred[:, i])
         im = ax.imshow(cm, interpolation="nearest", cmap="Blues")
-        ax.set_title(col.replace("_", " ").title(), fontsize=13, fontweight="bold")
+        ax.set_title(
+            col.replace("_", " ").title(), fontsize=13, fontweight="bold",
+        )
         ax.set_xlabel("Predicted", fontsize=10)
         ax.set_ylabel("Actual", fontsize=10)
         ax.set_xticks([0, 1])
@@ -143,41 +179,49 @@ def plot_confusion_matrices(y_true, y_pred, label_columns, save_path):
         ax.set_xticklabels(["Neg", "Pos"])
         ax.set_yticklabels(["Neg", "Pos"])
 
-        # Annotate cells
         for row in range(cm.shape[0]):
             for col_idx in range(cm.shape[1]):
                 ax.text(
-                    col_idx,
-                    row,
-                    f"{cm[row, col_idx]:,}",
-                    ha="center",
-                    va="center",
-                    fontsize=12,
+                    col_idx, row, f"{cm[row, col_idx]:,}",
+                    ha="center", va="center", fontsize=12,
                     color="white" if cm[row, col_idx] > cm.max() / 2 else "black",
                 )
-
         fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    # Hide any unused subplots
     for j in range(len(label_columns), len(axes)):
         axes[j].set_visible(False)
 
-    fig.suptitle("Confusion Matrices (per label)", fontsize=16, fontweight="bold")
+    fig.suptitle(
+        "Confusion Matrices (per label)", fontsize=16, fontweight="bold",
+    )
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"[eval] Confusion matrices saved to {save_path}")
+    logger.info("[eval] Confusion matrices saved to %s", save_path)
 
 
 # ===================================================================
 # ROC curves
 # ===================================================================
 
-def plot_roc_curves(y_true, y_proba, label_columns, save_path):
+def plot_roc_curves(
+    y_true: np.ndarray,
+    y_proba: np.ndarray,
+    label_columns: list[str],
+    save_path: str | Path,
+) -> None:
     """Plot per-label ROC curves with AUC scores and save as PNG.
 
-    Takes ground-truth binary labels (N, C), predicted probabilities
-    (N, C), a list of label names, and the destination file path.
+    Parameters
+    ----------
+    y_true : np.ndarray
+        Ground-truth binary labels ``(N, C)``.
+    y_proba : np.ndarray
+        Predicted probabilities ``(N, C)``.
+    label_columns : list[str]
+        Label names.
+    save_path : str or Path
+        Destination file path.
     """
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -191,8 +235,11 @@ def plot_roc_curves(y_true, y_proba, label_columns, save_path):
         try:
             fpr, tpr, _ = roc_curve(y_true[:, i], y_proba[:, i])
             roc_auc_val = auc(fpr, tpr)
-            label_name = col.replace("_", " ").title()
-            ax.plot(fpr, tpr, color=colour, lw=2, label=f"{label_name} (AUC = {roc_auc_val:.4f})")
+            name = col.replace("_", " ").title()
+            ax.plot(
+                fpr, tpr, color=colour, lw=2,
+                label=f"{name} (AUC = {roc_auc_val:.4f})",
+            )
         except ValueError:
             pass
 
@@ -208,18 +255,25 @@ def plot_roc_curves(y_true, y_proba, label_columns, save_path):
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"[eval] ROC curves saved to {save_path}")
+    logger.info("[eval] ROC curves saved to %s", save_path)
 
 
 # ===================================================================
 # Training history
 # ===================================================================
 
-def plot_training_history(history, save_path):
+def plot_training_history(
+    history: dict[str, list[float]],
+    save_path: str | Path,
+) -> None:
     """Plot training / validation loss and ROC-AUC over epochs.
 
-    Takes a history dict (must contain keys train_loss, val_loss, and
-    val_roc_auc) and the destination file path for the saved figure.
+    Parameters
+    ----------
+    history : dict
+        Must contain ``train_loss``, ``val_loss``, ``val_roc_auc``.
+    save_path : str or Path
+        Destination file path.
     """
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -229,17 +283,17 @@ def plot_training_history(history, save_path):
 
     epochs = range(1, len(history["train_loss"]) + 1)
 
-    # --- Loss ---
     ax1.plot(epochs, history["train_loss"], "o-", color="#FF6B6B", label="Train Loss")
     ax1.plot(epochs, history["val_loss"], "o-", color="#4ECDC4", label="Val Loss")
     ax1.set_xlabel("Epoch", fontsize=12)
-    ax1.set_ylabel("BCE Loss", fontsize=12)
+    ax1.set_ylabel("Loss", fontsize=12)
     ax1.set_title("Training & Validation Loss", fontsize=14, fontweight="bold")
     ax1.legend(fontsize=11)
     ax1.grid(alpha=0.3)
 
-    # --- ROC-AUC ---
-    ax2.plot(epochs, history["val_roc_auc"], "o-", color="#FFEAA7", label="Val ROC-AUC")
+    ax2.plot(
+        epochs, history["val_roc_auc"], "o-", color="#FFEAA7", label="Val ROC-AUC",
+    )
     ax2.set_xlabel("Epoch", fontsize=12)
     ax2.set_ylabel("ROC-AUC", fontsize=12)
     ax2.set_title("Validation ROC-AUC", fontsize=14, fontweight="bold")
@@ -249,30 +303,47 @@ def plot_training_history(history, save_path):
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"[eval] Training history plot saved to {save_path}")
+    logger.info("[eval] Training history plot saved to %s", save_path)
 
 
 # ===================================================================
 # Text report
 # ===================================================================
 
-def generate_classification_report(y_true, y_pred, label_columns):
+def generate_classification_report(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    label_columns: list[str],
+) -> str:
     """Return a formatted multi-label classification report.
 
-    Takes ground-truth binary labels (N, C), predicted binary labels
-    (N, C), and a list of label names.  Returns a human-readable
-    classification report string.
-    """
-    header = "=" * 60 + "\n  Classification Report – Comment Toxicity Detection\n" + "=" * 60 + "\n"
-    per_label_reports = []
+    Parameters
+    ----------
+    y_true : np.ndarray
+        Ground-truth binary labels ``(N, C)``.
+    y_pred : np.ndarray
+        Predicted binary labels ``(N, C)``.
+    label_columns : list[str]
+        Label names.
 
+    Returns
+    -------
+    str
+        Human-readable report string.
+    """
+    header = (
+        "=" * 60
+        + "\n  Classification Report – Comment Toxicity Detection\n"
+        + "=" * 60
+        + "\n"
+    )
+    parts: list[str] = []
     for i, col in enumerate(label_columns):
         report = classification_report(
-            y_true[:, i],
-            y_pred[:, i],
+            y_true[:, i], y_pred[:, i],
             target_names=["Non-toxic", col.replace("_", " ").title()],
             zero_division=0,
         )
-        per_label_reports.append(f"\n--- {col.replace('_', ' ').title()} ---\n{report}")
+        parts.append(f"\n--- {col.replace('_', ' ').title()} ---\n{report}")
 
-    return header + "\n".join(per_label_reports)
+    return header + "\n".join(parts)
