@@ -108,32 +108,11 @@ The training data (`data/train.csv` and `data/test.csv`) is included in the repo
 
 Training the model on Google Colab is recommended for free GPU access. Since the dataset is included in the repo, you just need to clone and run:
 
-1. **Open a new Colab notebook** and run these cells:
+1. **Open a new Colab notebook** and run all the cells:
 
-   ```python
-   # Cell 1: Clone the repository
-   !git clone https://github.com/10Unknownboy/Comment-Toxicity-Detection.git
-   %cd Comment-Toxicity-Detection
-   ```
-
-   ```python
-   # Cell 2: Install dependencies
-   !pip install torch pandas numpy scikit-learn matplotlib tqdm
-   ```
-
-   ```python
-   # Cell 3: Train the model (uses GPU automatically if available)
-   !python -m src.train --epochs 5 --batch-size 256
-   ```
-
-   > Tip: Use `--sample-size 160000` for faster training (~15 min on Colab GPU), or `--sample-size 0` for the full 560K dataset (~45 min).
+   > Tip: Use `--sample-size 160000` for faster training (~3 min on Colab GPU), or `--sample-size 0` for the full 560K dataset (~8 min).
 
 2. **Download the trained model files** from Colab's `models/` folder:
-
-   ```python
-   # Cell 4: Zip model artifacts for easy download
-   !zip -r models.zip models/
-   ```
    Then click the file icon in the Colab sidebar → navigate to `models.zip` → download.
 
 3. **Place the downloaded files** into your local `models/` directory:
@@ -146,13 +125,17 @@ Training the model on Google Colab is recommended for free GPU access. Since the
 
 ### Running the App
 
+**Option A: Run Locally**
 Once the trained model files are in the `models/` directory:
 
 ```bash
 streamlit run app.py
 ```
-
 The app will launch in your browser at `http://localhost:8501`.
+
+**Option B: Run in Google Colab (via ngrok)**
+You can also run the Streamlit dashboard directly from Colab without setting anything up locally! 
+The last cell in the provided `training.ipynb` notebook will prompt you for an [ngrok auth token](https://dashboard.ngrok.com/get-started/your-authtoken). Simply paste your token, and it will give you a public URL to access the live dashboard right from the cloud.
 
 ---
 
