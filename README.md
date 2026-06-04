@@ -254,21 +254,6 @@ Efficiently process large datasets of comments in a single batch.
 
 ---
 
-## Tech Stack
-
-| Technology    | Version | Purpose                          |
-|---------------|---------|----------------------------------|
-| Python        | 3.13    | Core programming language        |
-| PyTorch       | 2.9     | Deep learning framework          |
-| Streamlit     | 1.54    | Web application framework        |
-| scikit-learn  | 1.3+    | Metrics and evaluation           |
-| Matplotlib    | 3.7+    | Static plotting and charts       |
-| Plotly        | 5.15+   | Interactive visualizations        |
-| Pandas        | 2.0+    | Data manipulation and analysis   |
-| NumPy         | 1.24+   | Numerical computing              |
-
----
-
 ## Model Performance
 
 The BiLSTM model achieves strong performance across all toxicity categories:
