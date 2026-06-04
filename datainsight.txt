@@ -2,7 +2,7 @@
   Data Insight Report - Comment Toxicity Detection
 ================================================================================
 
-  Generated on : 2026-05-28 11:21:26
+  Generated on : 2026-06-04 11:56:18
   Data source  : D:\projects\Comment Toxicity Detection\data\train.csv
 
 ================================================================================
@@ -24,11 +24,11 @@
       7. insult
       8. identity_hate
 
-  Total memory usage : 94.72 MB
+  Total memory usage : 72.24 MB
 
   Memory per column:
-    id                   :   10129.02 KB
-    comment_text         :   79384.47 KB
+    id                   :    3739.95 KB
+    comment_text         :   62755.05 KB
     toxic                :    1246.65 KB
     severe_toxic         :    1246.65 KB
     obscene              :    1246.65 KB
@@ -40,8 +40,8 @@
   2. Data Types
 ================================================================================
 
-    id                   : object
-    comment_text         : object
+    id                   : str
+    comment_text         : str
     toxic                : int64
     severe_toxic         : int64
     obscene              : int64
