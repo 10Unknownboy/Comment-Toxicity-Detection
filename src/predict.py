@@ -174,6 +174,7 @@ def predict_batch(
     model: torch.nn.Module,
     vocab: dict[str, int],
     config: Config,
+    thresholds: dict[str, float] | None = None,
 ) -> pd.DataFrame:
     """Predict toxicity scores for multiple comments.
 
@@ -207,7 +208,7 @@ def predict_batch(
         preds["overall_toxicity"] = max(
             preds.get(c, 0.0) for c in config.LABEL_COLUMNS
         )
-        preds["label"] = get_toxicity_label(preds)
+        preds["label"] = get_toxicity_label(preds, thresholds=thresholds)
         results.append(preds)
 
     df = pd.DataFrame(results)

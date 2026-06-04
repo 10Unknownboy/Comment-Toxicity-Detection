@@ -831,7 +831,7 @@ def page_bulk_prediction():
         result_frames = []
 
         for idx, chunk in enumerate(all_chunks):
-            chunk_df = predict_batch(chunk, model, vocab, config)
+            chunk_df = predict_batch(chunk, model, vocab, config, thresholds)
             result_frames.append(chunk_df)
             progress.progress((idx + 1) / len(all_chunks), text=f"Processing… {(idx + 1) * chunk_size}/{len(texts)}")
 

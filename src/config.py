@@ -83,7 +83,7 @@ class Config:
         # ── Augmentation ───────────────────────────────────────────
         AUGMENT_RARE_CLASSES: bool = True,
         AUGMENT_TARGET_THREAT: int = 2000,
-        AUGMENT_TARGET_IDENTITY_HATE: int = 4000,
+        AUGMENT_TARGET_IDENTITY_HATE: int = 2500,
         # ── Threshold tuner ────────────────────────────────────────
         THRESHOLD_STEP: float = 0.01,
         MIN_PRECISION_FLOOR: float = 0.40,

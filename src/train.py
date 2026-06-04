@@ -38,7 +38,7 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import roc_auc_score
 from torch.amp import GradScaler, autocast
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm import tqdm
 
 # Ensure project root is on sys.path so ``src.*`` imports work in Colab.
@@ -141,12 +141,10 @@ def train_model(config: Config) -> dict[str, list[float]]:
     optimiser = torch.optim.Adam(model.parameters(), lr=config.LEARNING_RATE)
 
     # ── LR scheduler ──────────────────────────────────────────────
-    scheduler = ReduceLROnPlateau(
+    scheduler = CosineAnnealingLR(
         optimiser,
-        mode="min",
-        factor=config.LR_SCHEDULER_FACTOR,
-        patience=config.LR_SCHEDULER_PATIENCE,
-        min_lr=config.MIN_LR,
+        T_max=config.EPOCHS,
+        eta_min=config.MIN_LR,
     )
 
     # ── Mixed precision ───────────────────────────────────────────
@@ -159,7 +157,7 @@ def train_model(config: Config) -> dict[str, list[float]]:
         "val_loss": [],
         "val_roc_auc": [],
     }
-    best_val_loss = float("inf")
+    best_val_auc = 0.0
     patience_counter = 0
     model_save_path = config.model_path / "toxicity_model.pth"
 
@@ -263,14 +261,14 @@ def train_model(config: Config) -> dict[str, list[float]]:
         )
 
         # ── LR scheduler step ────────────────────────────────────
-        scheduler.step(avg_val_loss)
+        scheduler.step()
 
         # ── Early stopping & checkpoint ───────────────────────────
-        if avg_val_loss < best_val_loss - config.EARLY_STOPPING_MIN_DELTA:
-            best_val_loss = avg_val_loss
+        if val_roc_auc > best_val_auc + config.EARLY_STOPPING_MIN_DELTA:
+            best_val_auc = val_roc_auc
             patience_counter = 0
             torch.save(model.state_dict(), model_save_path)
-            logger.info("  ✓ Best model saved (val_loss=%.4f)", avg_val_loss)
+            logger.info("  ✓ Best model saved (val_roc_auc=%.4f)", val_roc_auc)
         else:
             patience_counter += 1
             logger.info(
