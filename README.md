@@ -9,28 +9,6 @@
 
 ---
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Project Structure](#project-structure)
-- [Dataset](#dataset)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Dataset Setup](#dataset-setup)
-  - [Training (Google Colab)](#training-google-colab)
-  - [Running the App](#running-the-app)
-- [Model Architecture](#model-architecture)
-- [Usage](#usage)
-- [Tech Stack](#tech-stack)
-- [Model Performance](#model-performance)
-- [Business Use Cases](#business-use-cases)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgments](#acknowledgments)
-
----
-
 ## Problem Statement
 
 Online communities and social media platforms are integral to modern communication, but the prevalence of toxic comments (harassment, hate speech, offensive language) severely impacts healthy discourse. To maintain constructive environments, automated real-time systems are needed to detect and flag toxicity at scale.
@@ -298,5 +276,5 @@ The BiLSTM model achieves strong performance across all toxicity categories:
 ---
 
 <p align="center">
-  Made for a safer internet
+  Made for a safer internet ❤️
 </p>
