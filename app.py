@@ -352,15 +352,14 @@ def page_realtime():
     example_cols = st.columns(len(EXAMPLES))
     for idx, (btn_label, btn_text) in enumerate(EXAMPLES.items()):
         with example_cols[idx]:
-            if st.button(btn_label, key=f"ex_{idx}", width="stretch"):
-                st.session_state["comment_input"] = btn_text
+            if st.button(btn_label, key=f"ex_{idx}", use_container_width=True):
+                st.session_state["comment_box"] = btn_text
 
     st.markdown("")  # spacer
 
     # ── Text input ───────────────────────────────────────────────────────────
     comment = st.text_area(
         "Enter a comment to analyse",
-        value=st.session_state.get("comment_input", ""),
         height=140,
         placeholder="Type or paste a comment here…",
         key="comment_box",

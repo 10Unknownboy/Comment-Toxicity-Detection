@@ -1,7 +1,7 @@
 """
 Training script for the Comment Toxicity Detection model.
 
-Designed to run on **Google Colab with a GPU**.  The script:
+Designed to run on Google Colab with a GPU. The script:
   1. Auto-detects CUDA and uses the best available device.
   2. Prepares data loaders (with augmentation for rare classes).
   3. Trains a BiLSTM+Attention classifier with:
@@ -13,17 +13,7 @@ Designed to run on **Google Colab with a GPU**.  The script:
      - Mixed precision (auto-detected)
   4. Tunes per-label decision thresholds on the validation set.
   5. Saves all artefacts for download from Colab.
-
-Usage (Colab cell)::
-
-    !python -m src.train --epochs 8 --batch-size 256
-
-Or simply::
-
-    !python -m src.train
 """
-
-from __future__ import annotations
 
 import argparse
 import json
@@ -41,7 +31,7 @@ from torch.amp import GradScaler, autocast
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm import tqdm
 
-# Ensure project root is on sys.path so ``src.*`` imports work in Colab.
+# Ensure project root is on sys.path so src.* imports work in Colab.
 _project_root = Path(__file__).resolve().parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
@@ -70,14 +60,8 @@ logger = logging.getLogger(__name__)
 # Reproducibility
 # ===================================================================
 
-def _set_seeds(seed: int) -> None:
-    """Set random seeds for Python, NumPy, and PyTorch.
-
-    Parameters
-    ----------
-    seed : int
-        Seed value for all generators.
-    """
+def _set_seeds(seed):
+    """Set random seeds for Python, NumPy, and PyTorch."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -91,20 +75,8 @@ def _set_seeds(seed: int) -> None:
 # Core training loop
 # ===================================================================
 
-def train_model(config: Config) -> dict[str, list[float]]:
-    """Train the toxicity classifier end-to-end.
-
-    Parameters
-    ----------
-    config : Config
-        Project configuration (hyper-parameters, paths, flags).
-
-    Returns
-    -------
-    dict[str, list[float]]
-        Training history with keys ``train_loss``, ``val_loss``,
-        ``val_roc_auc``.
-    """
+def train_model(config):
+    """Train the toxicity classifier end-to-end."""
     _set_seeds(config.RANDOM_SEED)
 
     # ── Device ────────────────────────────────────────────────────
@@ -125,8 +97,8 @@ def train_model(config: Config) -> dict[str, list[float]]:
     model.to(device)
 
     # ── Class weights & loss ──────────────────────────────────────
-    logger.info("[train] Computing class weights from training data …")
-    train_labels_list: list[np.ndarray] = []
+    logger.info("[train] Computing class weights from training data ...")
+    train_labels_list = []
     for batch in train_loader:
         _, labels_batch = batch
         train_labels_list.append(labels_batch.numpy())
@@ -152,7 +124,7 @@ def train_model(config: Config) -> dict[str, list[float]]:
     amp_device_type = "cuda" if device.type == "cuda" else "cpu"
 
     # ── History & early stopping ──────────────────────────────────
-    history: dict[str, list[float]] = {
+    history = {
         "train_loss": [],
         "val_loss": [],
         "val_roc_auc": [],
@@ -162,7 +134,7 @@ def train_model(config: Config) -> dict[str, list[float]]:
     model_save_path = config.model_path / "toxicity_model.pth"
 
     logger.info("=" * 60)
-    logger.info("  Starting training (%d epochs) …", config.EPOCHS)
+    logger.info("  Starting training (%d epochs) ...", config.EPOCHS)
     logger.info("=" * 60)
 
     for epoch in range(1, config.EPOCHS + 1):
@@ -213,8 +185,8 @@ def train_model(config: Config) -> dict[str, list[float]]:
         model.eval()
         val_loss = 0.0
         val_batches = 0
-        all_val_proba: list[np.ndarray] = []
-        all_val_true: list[np.ndarray] = []
+        all_val_proba = []
+        all_val_true = []
 
         with torch.no_grad():
             for batch in tqdm(
@@ -253,8 +225,8 @@ def train_model(config: Config) -> dict[str, list[float]]:
 
         current_lr = optimiser.param_groups[0]["lr"]
         logger.info(
-            "  Epoch %d/%d  │  Train: %.4f  │  Val: %.4f  │  "
-            "AUC: %.4f  │  LR: %.2e  │  %.1fs",
+            "  Epoch %d/%d  |  Train: %.4f  |  Val: %.4f  |  "
+            "AUC: %.4f  |  LR: %.2e  |  %.1fs",
             epoch, config.EPOCHS,
             avg_train_loss, avg_val_loss, val_roc_auc,
             current_lr, elapsed,
@@ -268,15 +240,15 @@ def train_model(config: Config) -> dict[str, list[float]]:
             best_val_auc = val_roc_auc
             patience_counter = 0
             torch.save(model.state_dict(), model_save_path)
-            logger.info("  ✓ Best model saved (val_roc_auc=%.4f)", val_roc_auc)
+            logger.info("  v Best model saved (val_roc_auc=%.4f)", val_roc_auc)
         else:
             patience_counter += 1
             logger.info(
-                "  ✗ No improvement (%d/%d)",
+                "  x No improvement (%d/%d)",
                 patience_counter, config.EARLY_STOPPING_PATIENCE,
             )
             if patience_counter >= config.EARLY_STOPPING_PATIENCE:
-                logger.info("  ⚠ Early stopping triggered!")
+                logger.info("  ! Early stopping triggered!")
                 break
 
     # ── Save training history ─────────────────────────────────────
@@ -290,7 +262,7 @@ def train_model(config: Config) -> dict[str, list[float]]:
 
     # ── Load best model & evaluate on test set ────────────────────
     logger.info("=" * 60)
-    logger.info("  Evaluating best model on test set …")
+    logger.info("  Evaluating best model on test set ...")
     logger.info("=" * 60)
 
     model.load_state_dict(
@@ -331,7 +303,7 @@ def train_model(config: Config) -> dict[str, list[float]]:
 
     # ── Threshold tuning on validation set ────────────────────────
     logger.info("=" * 60)
-    logger.info("  Tuning per-label decision thresholds …")
+    logger.info("  Tuning per-label decision thresholds ...")
     logger.info("=" * 60)
 
     thresholds_path = config.model_path / "thresholds.json"
@@ -360,7 +332,7 @@ def train_model(config: Config) -> dict[str, list[float]]:
     # ── Final download instructions ───────────────────────────────
     logger.info("")
     logger.info("=" * 60)
-    logger.info("  ✅  TRAINING COMPLETE!")
+    logger.info("  [DONE] TRAINING COMPLETE!")
     logger.info("=" * 60)
     logger.info("")
     logger.info("  Download these files from Colab:")
@@ -383,14 +355,8 @@ def train_model(config: Config) -> dict[str, list[float]]:
 # CLI entry-point
 # ===================================================================
 
-def _parse_args() -> argparse.Namespace:
-    """Parse command-line arguments for training overrides.
-
-    Returns
-    -------
-    argparse.Namespace
-        Parsed arguments.
-    """
+def _parse_args():
+    """Parse command-line arguments for training overrides."""
     parser = argparse.ArgumentParser(
         description="Train the Toxicity Classifier (designed for Colab w/ GPU).",
     )

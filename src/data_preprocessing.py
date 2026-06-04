@@ -4,12 +4,10 @@ Data preprocessing and augmentation pipeline for Comment Toxicity Detection.
 Responsibilities:
   - Text cleaning (HTML, URLs, unicode, repetition, slang)
   - Vocabulary construction, serialisation, and loading
-  - Sequence encoding (token → index with padding / truncation)
+  - Sequence encoding (token -> index with padding / truncation)
   - Text augmentation for rare classes (deletion, swap, synonym)
   - PyTorch Dataset and DataLoader creation
 """
-
-from __future__ import annotations
 
 import json
 import logging
@@ -35,12 +33,11 @@ logger = logging.getLogger(__name__)
 PAD_IDX = 0
 UNK_IDX = 1
 
-
 # ===================================================================
 # Text cleaning
 # ===================================================================
 
-# Common internet slang → expansion (applied after lowercasing)
+# Common internet slang -> expansion (applied after lowercasing)
 _SLANG_MAP = {
     " u ": " you ",
     " r ": " are ",
@@ -61,56 +58,37 @@ _SLANG_MAP = {
     " af ": " as fuck ",
 }
 
-# Regex: collapse 3+ consecutive identical words → single word
+# Regex: collapse 3+ consecutive identical words -> single word
 _RE_REPEAT_WORD = re.compile(r"\b(\w+)(\s+\1){2,}\b", re.IGNORECASE)
 
+def clean_text(text):
+    """
+    Normalise and clean a raw comment string.
 
-def clean_text(text: str) -> str:
-    """Normalise and clean a raw comment string.
-
-    Processing steps (in order):
-      1. Unicode normalisation (NFKD).
-      2. Convert to lowercase.
-      3. Strip HTML tags.
-      4. Remove URLs.
-      5. Expand common internet slang.
-      6. Keep alphanumeric + sentiment punctuation ``[!?.,]``.
-      7. Collapse repeating words (e.g. "die die die die" → "die").
-      8. Collapse whitespace and strip.
-
-    Parameters
-    ----------
-    text : str
-        Raw comment text.  ``None`` or non-string values return ``""``.
-
-    Returns
-    -------
-    str
-        Cleaned text ready for tokenisation.
+    Processing steps:
+      1. Unicode normalisation
+      2. Lowercase
+      3. Strip HTML & URLs
+      4. Expand slang
+      5. Keep alphanumeric & punctuation [!?.,]
+      6. Collapse repeating words and extra whitespace
     """
     if not isinstance(text, str):
         return ""
 
-    # Unicode normalisation (é → e, etc.)
     text = unicodedata.normalize("NFKD", text)
     text = text.encode("ascii", "ignore").decode("ascii")
 
     text = text.lower()
-    text = re.sub(r"<[^>]+>", " ", text)                 # HTML tags
-    text = re.sub(r"https?://\S+|www\.\S+", " ", text)   # URLs
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"https?://\S+|www\.\S+", " ", text)
 
-    # Expand slang (pad with spaces for word-boundary matching)
     text = f" {text} "
     for slang, expansion in _SLANG_MAP.items():
         text = text.replace(slang, expansion)
 
-    # Keep alphanumeric + useful punctuation
     text = re.sub(r"[^a-z0-9!?., \n]", " ", text)
-
-    # Collapse repeating words: "fuck fuck fuck fuck" → "fuck"
     text = _RE_REPEAT_WORD.sub(r"\1", text)
-
-    # Collapse whitespace
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
@@ -119,67 +97,27 @@ def clean_text(text: str) -> str:
 # Vocabulary utilities
 # ===================================================================
 
-def build_vocabulary(texts: list[str], max_vocab: int) -> dict[str, int]:
-    """Build a word-to-index mapping from a list of cleaned texts.
-
-    Tokens are split on whitespace.  The most-frequent tokens (up to
-    *max_vocab*) are kept; indices start at 2 to reserve 0 for PAD and
-    1 for UNK.
-
-    Parameters
-    ----------
-    texts : list[str]
-        Pre-cleaned text strings.
-    max_vocab : int
-        Maximum vocabulary size.
-
-    Returns
-    -------
-    dict[str, int]
-        Word → index mapping.
+def build_vocabulary(texts, max_vocab):
     """
-    counter: Counter[str] = Counter()
+    Build a word-to-index mapping from a list of cleaned texts.
+    Most frequent words kept, index starts at 2 (0=PAD, 1=UNK).
+    """
+    counter = Counter()
     for t in texts:
         counter.update(t.split())
 
     most_common = counter.most_common(max_vocab)
     return {word: idx + 2 for idx, (word, _) in enumerate(most_common)}
 
-
-def save_vocabulary(vocab: dict[str, int], path: str | Path) -> None:
-    """Persist a vocabulary dictionary to a JSON file.
-
-    Parameters
-    ----------
-    vocab : dict[str, int]
-        Word → index mapping.
-    path : str or Path
-        Destination file path.
-    """
+def save_vocabulary(vocab, path):
+    """Save vocab dict to JSON."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(vocab, fh, ensure_ascii=False)
 
-
-def load_vocabulary(path: str | Path) -> dict[str, int]:
-    """Load a vocabulary dictionary from a JSON file.
-
-    Parameters
-    ----------
-    path : str or Path
-        Path to the JSON vocabulary file.
-
-    Returns
-    -------
-    dict[str, int]
-        Word → index mapping.
-
-    Raises
-    ------
-    FileNotFoundError
-        If the file does not exist.
-    """
+def load_vocabulary(path):
+    """Load vocab dict from JSON."""
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Vocabulary file not found: {path}")
@@ -191,23 +129,8 @@ def load_vocabulary(path: str | Path) -> dict[str, int]:
 # Encoding
 # ===================================================================
 
-def encode_text(text: str, vocab: dict[str, int], max_len: int) -> list[int]:
-    """Convert a cleaned text string to a fixed-length token-index list.
-
-    Parameters
-    ----------
-    text : str
-        Cleaned text.
-    vocab : dict[str, int]
-        Word → index mapping.
-    max_len : int
-        Desired output length (truncate / pad as needed).
-
-    Returns
-    -------
-    list[int]
-        Integer-encoded, padded/truncated sequence.
-    """
+def encode_text(text, vocab, max_len):
+    """Convert string to list of token indices, padded/truncated to max_len."""
     tokens = text.split()
     indices = [vocab.get(tok, UNK_IDX) for tok in tokens]
 
@@ -223,19 +146,11 @@ def encode_text(text: str, vocab: dict[str, int], max_len: int) -> list[int]:
 # Text augmentation for rare classes
 # ===================================================================
 
-def _ensure_nltk_wordnet() -> bool:
-    """Try to load NLTK WordNet, downloading it if necessary.
-
-    Returns
-    -------
-    bool
-        ``True`` if WordNet is available, ``False`` otherwise.
-    """
+def _ensure_nltk_wordnet():
+    """Ensure NLTK WordNet is downloaded for synonym augmentation."""
     try:
         import nltk
-        from nltk.corpus import wordnet  # noqa: F401
-
-        # Quick check — will raise LookupError if not downloaded
+        from nltk.corpus import wordnet
         wordnet.synsets("test")
         return True
     except LookupError:
@@ -245,55 +160,26 @@ def _ensure_nltk_wordnet() -> bool:
             nltk.download("omw-1.4", quiet=True)
             return True
         except Exception:
-            logger.warning("Could not download NLTK WordNet — synonym augmentation disabled.")
+            logger.warning("Could not download WordNet.")
             return False
     except ImportError:
-        logger.warning("NLTK not installed — synonym augmentation disabled.")
+        logger.warning("NLTK not installed.")
         return False
 
-
-def augment_random_deletion(text: str, delete_pct: float = 0.12) -> str:
-    """Randomly delete a fraction of words from a text.
-
-    Preserves at least 70 % of the original tokens.
-
-    Parameters
-    ----------
-    text : str
-        Cleaned input text.
-    delete_pct : float
-        Target fraction of tokens to delete (0.10–0.15).
-
-    Returns
-    -------
-    str
-        Augmented text.
-    """
+def augment_random_deletion(text, delete_pct=0.12):
+    """Randomly delete a fraction of words from text."""
     words = text.split()
     if len(words) <= 3:
         return text
 
     n_delete = max(1, int(len(words) * delete_pct))
-    # Ensure we keep at least 70 %
     n_delete = min(n_delete, int(len(words) * 0.30))
 
     indices_to_delete = set(random.sample(range(len(words)), n_delete))
     return " ".join(w for i, w in enumerate(words) if i not in indices_to_delete)
 
-
-def augment_word_swap(text: str) -> str:
-    """Randomly swap two adjacent words.
-
-    Parameters
-    ----------
-    text : str
-        Cleaned input text.
-
-    Returns
-    -------
-    str
-        Augmented text with one pair of adjacent words swapped.
-    """
+def augment_word_swap(text):
+    """Randomly swap two adjacent words."""
     words = text.split()
     if len(words) < 2:
         return text
@@ -302,24 +188,8 @@ def augment_word_swap(text: str) -> str:
     words[idx], words[idx + 1] = words[idx + 1], words[idx]
     return " ".join(words)
 
-
-def augment_synonym_replace(text: str, n: int = 2) -> str:
-    """Replace up to *n* non-stopword tokens with WordNet synonyms.
-
-    Gracefully falls back to the original text if WordNet is unavailable.
-
-    Parameters
-    ----------
-    text : str
-        Cleaned input text.
-    n : int
-        Maximum number of replacements.
-
-    Returns
-    -------
-    str
-        Augmented text.
-    """
+def augment_synonym_replace(text, n=2):
+    """Replace up to n words with WordNet synonyms."""
     try:
         from nltk.corpus import wordnet
     except (ImportError, LookupError):
@@ -365,29 +235,8 @@ def augment_synonym_replace(text: str, n: int = 2) -> str:
 
     return " ".join(words)
 
-
-def augment_rare_classes(
-    df: pd.DataFrame,
-    config: Config,
-) -> pd.DataFrame:
-    """Augment training data to up-sample rare classes.
-
-    Only augments rows where ``threat == 1`` or ``identity_hate == 1``.
-    Three augmentation techniques are applied in rotation: random
-    deletion, word swap, and synonym replacement.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Training split with ``clean_text`` and label columns.
-    config : Config
-        Project configuration with augmentation targets.
-
-    Returns
-    -------
-    pd.DataFrame
-        Original + augmented rows concatenated.
-    """
+def augment_rare_classes(df, config):
+    """Upsample rare classes in the dataframe using augmentations."""
     targets = {
         "threat": config.AUGMENT_TARGET_THREAT,
         "identity_hate": config.AUGMENT_TARGET_IDENTITY_HATE,
@@ -398,7 +247,7 @@ def augment_rare_classes(
     if has_wordnet:
         aug_funcs.append(augment_synonym_replace)
 
-    new_rows: list[dict] = []
+    new_rows = []
 
     for label, target_count in targets.items():
         subset = df[df[label] == 1]
@@ -406,10 +255,10 @@ def augment_rare_classes(
         needed = max(0, target_count - current)
 
         if needed == 0:
-            logger.info("  %s: already has %d samples (target %d), skipping.", label, current, target_count)
+            logger.info("  %s: already has %d samples, skipping.", label, current)
             continue
 
-        logger.info("  %s: %d → %d (augmenting %d samples)", label, current, target_count, needed)
+        logger.info("  %s: %d -> %d (augmenting %d samples)", label, current, target_count, needed)
 
         idx = 0
         for _ in range(needed):
@@ -432,31 +281,16 @@ def augment_rare_classes(
 # ===================================================================
 
 class ToxicCommentsDataset(Dataset):
-    """PyTorch Dataset for encoded toxic-comment sequences.
+    """PyTorch Dataset for returning encoded sequences and labels."""
 
-    Parameters
-    ----------
-    encoded_texts : list[list[int]]
-        Token-index sequences, each of length ``max_len``.
-    labels : np.ndarray or None
-        Label matrix of shape ``(N, num_labels)``.  ``None`` for
-        unlabelled / inference data.
-    """
-
-    def __init__(
-        self,
-        encoded_texts: list[list[int]],
-        labels: np.ndarray | None = None,
-    ):
+    def __init__(self, encoded_texts, labels=None):
         self.encoded_texts = encoded_texts
         self.labels = labels
 
-    def __len__(self) -> int:
-        """Return the number of samples."""
+    def __len__(self):
         return len(self.encoded_texts)
 
-    def __getitem__(self, idx: int):
-        """Return ``(text_tensor,)`` or ``(text_tensor, label_tensor)``."""
+    def __getitem__(self, idx):
         text_tensor = torch.tensor(self.encoded_texts[idx], dtype=torch.long)
 
         if self.labels is not None:
@@ -470,35 +304,12 @@ class ToxicCommentsDataset(Dataset):
 # DataLoader factory
 # ===================================================================
 
-def get_data_loaders(
-    config: Config,
-) -> tuple[DataLoader, DataLoader, DataLoader, dict[str, int]]:
-    """Prepare train / validation / test DataLoader objects.
-
-    Workflow:
-      1. Read the training CSV.
-      2. Optionally sub-sample rows.
-      3. Clean all comment texts.
-      4. Split into train / val / test sets.
-      5. Augment rare classes in the training split.
-      6. Build vocabulary from the training split only.
-      7. Encode all splits.
-      8. Wrap in DataLoaders.
-      9. Save vocabulary to ``models/vocab.json``.
-
-    Parameters
-    ----------
-    config : Config
-        Project configuration.
-
-    Returns
-    -------
-    tuple[DataLoader, DataLoader, DataLoader, dict[str, int]]
-        ``(train_loader, val_loader, test_loader, vocab)``.
-    """
+def get_data_loaders(config):
+    """Prepare train, val, and test DataLoader objects."""
+    
     # ---- 1. Load CSV ----
     csv_path = config.train_csv_path
-    logger.info("[data] Loading training data from %s …", csv_path)
+    logger.info("[data] Loading training data from %s ...", csv_path)
     df = pd.read_csv(csv_path)
     logger.info("[data] Loaded %s rows.", f"{len(df):,}")
 
@@ -509,7 +320,7 @@ def get_data_loaders(
         logger.info("[data] Sampled down to %s rows.", f"{len(df):,}")
 
     # ---- 3. Clean texts ----
-    logger.info("[data] Cleaning texts …")
+    logger.info("[data] Cleaning texts ...")
     df["clean_text"] = df["comment_text"].apply(clean_text)
 
     texts = df["clean_text"].tolist()
@@ -530,13 +341,13 @@ def get_data_loaders(
     )
 
     logger.info(
-        "[data] Splits → train: %s  val: %s  test: %s",
+        "[data] Splits -> train: %s  val: %s  test: %s",
         f"{len(train_texts):,}", f"{len(val_texts):,}", f"{len(test_texts):,}",
     )
 
     # ---- 5. Augment rare classes (training split only) ----
     if config.AUGMENT_RARE_CLASSES:
-        logger.info("[data] Augmenting rare classes …")
+        logger.info("[data] Augmenting rare classes ...")
         train_df = pd.DataFrame({"clean_text": train_texts})
         for i, col in enumerate(config.LABEL_COLUMNS):
             train_df[col] = train_labels[:, i]
@@ -548,7 +359,7 @@ def get_data_loaders(
         logger.info("[data] After augmentation: %s training samples.", f"{len(train_texts):,}")
 
     # ---- 6. Build vocabulary (training set only) ----
-    logger.info("[data] Building vocabulary …")
+    logger.info("[data] Building vocabulary ...")
     vocab = build_vocabulary(train_texts, config.VOCAB_SIZE)
     logger.info("[data] Vocabulary size: %s tokens (+ PAD, UNK).", f"{len(vocab):,}")
 
@@ -557,7 +368,7 @@ def get_data_loaders(
     logger.info("[data] Vocabulary saved to %s", vocab_path)
 
     # ---- 7. Encode ----
-    logger.info("[data] Encoding sequences …")
+    logger.info("[data] Encoding sequences ...")
     train_encoded = [encode_text(t, vocab, config.MAX_SEQ_LEN) for t in train_texts]
     val_encoded = [encode_text(t, vocab, config.MAX_SEQ_LEN) for t in val_texts]
     test_encoded = [encode_text(t, vocab, config.MAX_SEQ_LEN) for t in test_texts]
@@ -567,14 +378,8 @@ def get_data_loaders(
     val_ds = ToxicCommentsDataset(val_encoded, val_labels)
     test_ds = ToxicCommentsDataset(test_encoded, test_labels)
 
-    train_loader = DataLoader(
-        train_ds, batch_size=config.BATCH_SIZE, shuffle=True, drop_last=False,
-    )
-    val_loader = DataLoader(
-        val_ds, batch_size=config.BATCH_SIZE, shuffle=False, drop_last=False,
-    )
-    test_loader = DataLoader(
-        test_ds, batch_size=config.BATCH_SIZE, shuffle=False, drop_last=False,
-    )
+    train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=config.BATCH_SIZE, shuffle=False)
+    test_loader = DataLoader(test_ds, batch_size=config.BATCH_SIZE, shuffle=False)
 
     return train_loader, val_loader, test_loader, vocab

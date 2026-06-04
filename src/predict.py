@@ -1,21 +1,18 @@
 """
 Inference utilities for the Comment Toxicity Detection Streamlit app.
 
-All inference runs on **CPU** so no GPU is required at serving time.
+All inference runs on CPU so no GPU is required at serving time.
 The module provides:
 
-  - ``load_model``         — load model, vocabulary, config, thresholds.
-  - ``predict_single``     — predict toxicity scores for one comment.
-  - ``predict_batch``      — predict on a list of comments → DataFrame.
-  - ``get_toxicity_label`` — human-readable summary label.
-  - ``get_severity_color`` — hex colour on a green→red gradient.
+  - load_model         - load model, vocabulary, config, thresholds.
+  - predict_single     - predict toxicity scores for one comment.
+  - predict_batch      - predict on a list of comments -> DataFrame.
+  - get_toxicity_label - human-readable summary label.
+  - get_severity_color - hex colour on a green->red gradient.
 """
-
-from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 import torch
@@ -30,41 +27,21 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Module-level cache to avoid reloading on every call
 # ---------------------------------------------------------------------------
-_cached_model: Optional[torch.nn.Module] = None
-_cached_vocab: Optional[dict[str, int]] = None
-_cached_config: Optional[Config] = None
-_cached_thresholds: Optional[dict[str, float]] = None
+_cached_model = None
+_cached_vocab = None
+_cached_config = None
+_cached_thresholds = None
 
 
 # ===================================================================
 # Model loading
 # ===================================================================
 
-def load_model(
-    model_dir: str = "models",
-) -> tuple[torch.nn.Module, dict[str, int], Config, dict[str, float]]:
-    """Load the trained model, vocabulary, configuration, and thresholds.
-
-    The model is forced onto **CPU** so the Streamlit app works without
-    a GPU.  Results are cached at module level — subsequent calls
-    return the same objects without reloading from disk.
-
-    Parameters
-    ----------
-    model_dir : str, optional
-        Path (relative or absolute) that contains
-        ``toxicity_model.pth``, ``vocab.json``, and optionally
-        ``thresholds.json``.
-
-    Returns
-    -------
-    tuple[nn.Module, dict, Config, dict]
-        ``(model, vocab, config, thresholds)`` — model in eval mode.
-
-    Raises
-    ------
-    FileNotFoundError
-        If the model checkpoint or vocabulary file is missing.
+def load_model(model_dir="models"):
+    """
+    Load the trained model, vocabulary, configuration, and thresholds.
+    The model is forced onto CPU so the Streamlit app works without
+    a GPU. Results are cached at module level.
     """
     global _cached_model, _cached_vocab, _cached_config, _cached_thresholds
 
@@ -127,30 +104,8 @@ def load_model(
 # Single prediction
 # ===================================================================
 
-def predict_single(
-    text: str,
-    model: torch.nn.Module,
-    vocab: dict[str, int],
-    config: Config,
-) -> dict[str, float]:
-    """Predict toxicity scores for a single comment.
-
-    Parameters
-    ----------
-    text : str
-        Raw comment text.
-    model : nn.Module
-        Loaded model in eval mode (outputs logits).
-    vocab : dict[str, int]
-        Word → index mapping.
-    config : Config
-        Project configuration.
-
-    Returns
-    -------
-    dict[str, float]
-        Label name → predicted probability.
-    """
+def predict_single(text, model, vocab, config):
+    """Predict toxicity scores for a single comment."""
     if not text or not text.strip():
         return {col: 0.0 for col in config.LABEL_COLUMNS}
 
@@ -169,39 +124,15 @@ def predict_single(
 # Batch prediction
 # ===================================================================
 
-def predict_batch(
-    texts: list[str],
-    model: torch.nn.Module,
-    vocab: dict[str, int],
-    config: Config,
-    thresholds: dict[str, float] | None = None,
-) -> pd.DataFrame:
-    """Predict toxicity scores for multiple comments.
-
-    Parameters
-    ----------
-    texts : list[str]
-        Raw comment texts.
-    model : nn.Module
-        Loaded model in eval mode.
-    vocab : dict[str, int]
-        Word → index mapping.
-    config : Config
-        Project configuration.
-
-    Returns
-    -------
-    pd.DataFrame
-        Columns: ``text``, the 6 label columns, ``overall_toxicity``,
-        ``label``.
-    """
+def predict_batch(texts, model, vocab, config, thresholds=None):
+    """Predict toxicity scores for multiple comments."""
     if not texts:
         return pd.DataFrame(
             columns=["text"] + config.LABEL_COLUMNS
             + ["overall_toxicity", "label"],
         )
 
-    results: list[dict[str, float | str]] = []
+    results = []
     for t in texts:
         preds = predict_single(t, model, vocab, config)
         preds["text"] = t
@@ -220,26 +151,10 @@ def predict_batch(
 # Human-readable helpers
 # ===================================================================
 
-def get_toxicity_label(
-    predictions: dict[str, float],
-    thresholds: dict[str, float] | None = None,
-) -> str:
-    """Return a human-readable toxicity summary label.
-
-    Uses per-label thresholds from ``thresholds.json``.
-
-    Parameters
-    ----------
-    predictions : dict[str, float]
-        Label → probability mapping.
-    thresholds : dict[str, float] or None
-        Per-label decision thresholds.  Falls back to 0.5.
-
-    Returns
-    -------
-    str
-        One of ``"Clean ✅"``, ``"Toxic ⚠️"``,
-        ``"Highly Toxic 🚨"``, ``"Threat Detected ⚔️"``.
+def get_toxicity_label(predictions, thresholds=None):
+    """
+    Return a human-readable toxicity summary label.
+    Uses per-label thresholds from thresholds.json.
     """
     if not predictions:
         return "Clean ✅"
@@ -262,19 +177,8 @@ def get_toxicity_label(
     return "Clean ✅"
 
 
-def get_severity_color(score: float) -> str:
-    """Return a hex colour on a green → yellow → red gradient.
-
-    Parameters
-    ----------
-    score : float
-        Toxicity score in ``[0, 1]``.
-
-    Returns
-    -------
-    str
-        Hex colour string (e.g. ``"#2ECC71"``).
-    """
+def get_severity_color(score):
+    """Return a hex colour on a green -> yellow -> red gradient."""
     score = max(0.0, min(1.0, score))
 
     if score <= 0.5:

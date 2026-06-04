@@ -7,17 +7,15 @@ Provides functions for:
   - Generating formatted text reports.
 """
 
-from __future__ import annotations
-
 import logging
 from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")  # non-interactive backend (safe for Colab & servers)
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-import torch  # noqa: E402
-from sklearn.metrics import (  # noqa: E402
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from sklearn.metrics import (
     accuracy_score,
     auc,
     classification_report,
@@ -31,44 +29,25 @@ from sklearn.metrics import (  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-# Type alias
-_Metrics = dict[str, dict | float]
-
 
 # ===================================================================
 # Model evaluation
 # ===================================================================
 
 def evaluate_model(
-    model: torch.nn.Module,
-    dataloader: torch.utils.data.DataLoader,
-    device: torch.device,
-    label_columns: list[str],
-    thresholds: list[float] | None = None,
-) -> dict[str, np.ndarray | _Metrics]:
-    """Run inference on a DataLoader and compute classification metrics.
-
-    Parameters
-    ----------
-    model : nn.Module
-        Trained model (outputs raw logits).
-    dataloader : DataLoader
-        Yields ``(texts, labels)`` batches.
-    device : torch.device
-        Inference device.
-    label_columns : list[str]
-        Label column names.
-    thresholds : list[float] or None
-        Per-label decision thresholds.  Defaults to 0.5 for all.
-
-    Returns
-    -------
-    dict
-        Keys: ``y_true``, ``y_pred``, ``y_proba``, ``metrics``.
+    model,
+    dataloader,
+    device,
+    label_columns,
+    thresholds=None,
+):
+    """
+    Run inference on a DataLoader and compute classification metrics.
+    Returns a dict with: y_true, y_pred, y_proba, metrics.
     """
     model.eval()
-    all_proba: list[np.ndarray] = []
-    all_true: list[np.ndarray] = []
+    all_proba = []
+    all_true = []
 
     with torch.no_grad():
         for batch in dataloader:
@@ -91,7 +70,7 @@ def evaluate_model(
         y_pred = (y_proba >= 0.5).astype(int)
 
     # ── Per-label metrics ─────────────────────────────────────────
-    metrics: _Metrics = {"per_label": {}}
+    metrics = {"per_label": {}}
     for i, col in enumerate(label_columns):
         try:
             label_auc = roc_auc_score(y_true[:, i], y_proba[:, i])
@@ -141,24 +120,12 @@ def evaluate_model(
 # ===================================================================
 
 def plot_confusion_matrices(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    label_columns: list[str],
-    save_path: str | Path,
-) -> None:
-    """Plot a 2×3 grid of per-label confusion matrices and save as PNG.
-
-    Parameters
-    ----------
-    y_true : np.ndarray
-        Ground-truth binary labels ``(N, C)``.
-    y_pred : np.ndarray
-        Predicted binary labels ``(N, C)``.
-    label_columns : list[str]
-        Label names.
-    save_path : str or Path
-        Destination file path.
-    """
+    y_true,
+    y_pred,
+    label_columns,
+    save_path,
+):
+    """Plot a 2x3 grid of per-label confusion matrices and save as PNG."""
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -205,24 +172,12 @@ def plot_confusion_matrices(
 # ===================================================================
 
 def plot_roc_curves(
-    y_true: np.ndarray,
-    y_proba: np.ndarray,
-    label_columns: list[str],
-    save_path: str | Path,
-) -> None:
-    """Plot per-label ROC curves with AUC scores and save as PNG.
-
-    Parameters
-    ----------
-    y_true : np.ndarray
-        Ground-truth binary labels ``(N, C)``.
-    y_proba : np.ndarray
-        Predicted probabilities ``(N, C)``.
-    label_columns : list[str]
-        Label names.
-    save_path : str or Path
-        Destination file path.
-    """
+    y_true,
+    y_proba,
+    label_columns,
+    save_path,
+):
+    """Plot per-label ROC curves with AUC scores and save as PNG."""
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -248,7 +203,7 @@ def plot_roc_curves(
     ax.set_ylim([0.0, 1.05])
     ax.set_xlabel("False Positive Rate", fontsize=12)
     ax.set_ylabel("True Positive Rate", fontsize=12)
-    ax.set_title("ROC Curves – Per Label", fontsize=15, fontweight="bold")
+    ax.set_title("ROC Curves - Per Label", fontsize=15, fontweight="bold")
     ax.legend(loc="lower right", fontsize=10)
     ax.grid(alpha=0.3)
 
@@ -263,18 +218,10 @@ def plot_roc_curves(
 # ===================================================================
 
 def plot_training_history(
-    history: dict[str, list[float]],
-    save_path: str | Path,
-) -> None:
-    """Plot training / validation loss and ROC-AUC over epochs.
-
-    Parameters
-    ----------
-    history : dict
-        Must contain ``train_loss``, ``val_loss``, ``val_roc_auc``.
-    save_path : str or Path
-        Destination file path.
-    """
+    history,
+    save_path,
+):
+    """Plot training and validation loss and ROC-AUC over epochs."""
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -311,33 +258,18 @@ def plot_training_history(
 # ===================================================================
 
 def generate_classification_report(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    label_columns: list[str],
-) -> str:
-    """Return a formatted multi-label classification report.
-
-    Parameters
-    ----------
-    y_true : np.ndarray
-        Ground-truth binary labels ``(N, C)``.
-    y_pred : np.ndarray
-        Predicted binary labels ``(N, C)``.
-    label_columns : list[str]
-        Label names.
-
-    Returns
-    -------
-    str
-        Human-readable report string.
-    """
+    y_true,
+    y_pred,
+    label_columns,
+):
+    """Return a formatted multi-label classification report."""
     header = (
         "=" * 60
-        + "\n  Classification Report – Comment Toxicity Detection\n"
+        + "\n  Classification Report - Comment Toxicity Detection\n"
         + "=" * 60
         + "\n"
     )
-    parts: list[str] = []
+    parts = []
     for i, col in enumerate(label_columns):
         report = classification_report(
             y_true[:, i], y_pred[:, i],

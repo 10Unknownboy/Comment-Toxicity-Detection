@@ -2,14 +2,12 @@
 Model architectures for multi-label toxicity classification.
 
 Provides:
-  - ``AttentionLayer``               — self-attention over LSTM outputs.
-  - ``BiLSTMAttentionClassifier``    — BiLSTM + attention (recommended).
-  - ``DistilBERTClassifier``         — stub for future DistilBERT fine-tuning.
-  - ``create_model``                 — factory function.
-  - ``ToxicityClassifier``           — backwards-compatible alias.
+  - AttentionLayer               - self-attention over LSTM outputs.
+  - BiLSTMAttentionClassifier    - BiLSTM + attention (recommended).
+  - DistilBERTClassifier         - stub for future DistilBERT fine-tuning.
+  - create_model                 - factory function.
+  - ToxicityClassifier           - backwards-compatible alias.
 """
-
-from __future__ import annotations
 
 import logging
 
@@ -24,21 +22,16 @@ logger = logging.getLogger(__name__)
 # ===================================================================
 
 class AttentionLayer(nn.Module):
-    """Additive (Bahdanau-style) self-attention over a sequence.
+    """
+    Additive (Bahdanau-style) self-attention over a sequence.
 
-    Given an LSTM output of shape ``(batch, seq_len, hidden*2)``, it
+    Given an LSTM output of shape (batch, seq_len, hidden*2), it
     learns a per-timestep importance score, normalises with softmax,
     and returns a weighted-sum context vector of shape
-    ``(batch, hidden*2)``.
-
-    Parameters
-    ----------
-    hidden_dim : int
-        Size of *each direction* of the BiLSTM.  The input is expected
-        to have size ``hidden_dim * 2``.
+    (batch, hidden*2).
     """
 
-    def __init__(self, hidden_dim: int):
+    def __init__(self, hidden_dim):
         super().__init__()
         input_dim = hidden_dim * 2
         self.score = nn.Sequential(
@@ -47,27 +40,8 @@ class AttentionLayer(nn.Module):
             nn.Linear(input_dim // 2, 1, bias=False),
         )
 
-    def forward(
-        self,
-        lstm_output: torch.Tensor,
-        mask: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        """Compute attention-weighted context vector.
-
-        Parameters
-        ----------
-        lstm_output : torch.Tensor
-            BiLSTM output of shape ``(batch, seq_len, hidden*2)``.
-        mask : torch.Tensor or None
-            Boolean mask of shape ``(batch, seq_len)`` where ``True``
-            indicates a *padded* position.  If provided, padded
-            positions receive ``-inf`` before softmax.
-
-        Returns
-        -------
-        torch.Tensor
-            Context vector of shape ``(batch, hidden*2)``.
-        """
+    def forward(self, lstm_output, mask=None):
+        """Compute attention-weighted context vector."""
         # scores: (batch, seq_len, 1)
         scores = self.score(lstm_output)
 
@@ -90,41 +64,26 @@ class AttentionLayer(nn.Module):
 # ===================================================================
 
 class BiLSTMAttentionClassifier(nn.Module):
-    """BiLSTM with self-attention for multi-label toxicity classification.
+    """
+    BiLSTM with self-attention for multi-label toxicity classification.
 
-    Architecture::
-
-        Embedding → BiLSTM (stacked) → Attention → Dropout → FC → ReLU
-        → Dropout → FC → (raw logits)
+    Architecture:
+        Embedding -> BiLSTM (stacked) -> Attention -> Dropout -> FC -> ReLU
+        -> Dropout -> FC -> (raw logits)
 
     The attention layer replaces the naive "last hidden state"
     concatenation of the plain BiLSTM, allowing the model to focus on
     the most toxicity-relevant tokens regardless of position.
-
-    Parameters
-    ----------
-    vocab_size : int
-        Total vocabulary size (including PAD and UNK).
-    embed_dim : int
-        Token-embedding dimensionality.
-    hidden_dim : int
-        Number of hidden units *per direction* in the LSTM.
-    num_layers : int
-        Number of stacked LSTM layers.
-    dropout : float
-        Dropout probability.
-    num_labels : int
-        Number of independent binary labels (default 6).
     """
 
     def __init__(
         self,
-        vocab_size: int,
-        embed_dim: int,
-        hidden_dim: int,
-        num_layers: int,
-        dropout: float,
-        num_labels: int = 6,
+        vocab_size,
+        embed_dim,
+        hidden_dim,
+        num_layers,
+        dropout,
+        num_labels=6,
     ):
         super().__init__()
 
@@ -157,19 +116,10 @@ class BiLSTMAttentionClassifier(nn.Module):
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(64, num_labels)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Integer-encoded input of shape ``(batch, seq_len)``.
-
-        Returns
-        -------
-        torch.Tensor
-            Raw logits of shape ``(batch, num_labels)``.
-            Apply ``torch.sigmoid()`` externally for probabilities.
+    def forward(self, x):
+        """
+        Forward pass.
+        Returns raw logits. Apply torch.sigmoid() externally for probabilities.
         """
         # Build a padding mask (True where PAD)
         pad_mask = (x == 0)  # (batch, seq_len)
@@ -182,7 +132,7 @@ class BiLSTMAttentionClassifier(nn.Module):
         out = self.fc1(out)
         out = self.relu(out)
         out = self.dropout(out)
-        out = self.fc2(out)  # (batch, num_labels) — raw logits
+        out = self.fc2(out)  # (batch, num_labels) - raw logits
         return out
 
 
@@ -191,30 +141,15 @@ class BiLSTMAttentionClassifier(nn.Module):
 # ===================================================================
 
 class DistilBERTClassifier(nn.Module):
-    """DistilBERT-based multi-label toxicity classifier.
-
-    .. note::
-        **This is a stub.**  The full implementation (tokenizer
-        pipeline, differential learning rates, warmup scheduler) will
-        be added in a future iteration.  For now, ``create_model``
-        will raise ``NotImplementedError`` if this model type is
-        requested.
-
-    Parameters
-    ----------
-    num_labels : int
-        Number of independent binary labels.
-    dropout : float
-        Dropout applied to the [CLS] embedding.
+    """
+    DistilBERT-based multi-label toxicity classifier.
+    This is a stub. For now, create_model will raise NotImplementedError
+    if this model type is requested.
     """
 
-    def __init__(self, num_labels: int = 6, dropout: float = 0.3):
+    def __init__(self, num_labels=6, dropout=0.3):
         super().__init__()
         self.num_labels = num_labels
-        # Will be:
-        #   self.bert = DistilBertModel.from_pretrained("distilbert-base-uncased")
-        #   self.dropout = nn.Dropout(dropout)
-        #   self.classifier = nn.Linear(768, num_labels)
         raise NotImplementedError(
             "DistilBERT support is stubbed out.  "
             "Set MODEL_TYPE = 'lstm_attention' in config.py."
@@ -229,7 +164,7 @@ class DistilBERTClassifier(nn.Module):
 # Backwards-compatible alias
 # ===================================================================
 
-# Old code imported ``ToxicityClassifier`` — keep that working.
+# Old code imported ToxicityClassifier - keep that working.
 ToxicityClassifier = BiLSTMAttentionClassifier
 
 
@@ -237,31 +172,8 @@ ToxicityClassifier = BiLSTMAttentionClassifier
 # Model factory
 # ===================================================================
 
-def create_model(
-    config,
-    vocab_size: int | None = None,
-) -> nn.Module:
-    """Instantiate the model specified in ``config.MODEL_TYPE``.
-
-    Parameters
-    ----------
-    config : Config
-        Project configuration.
-    vocab_size : int or None
-        Required for LSTM-based models.  For DistilBERT it is ignored.
-
-    Returns
-    -------
-    nn.Module
-        Uninitialised model (not yet moved to a device).
-
-    Raises
-    ------
-    NotImplementedError
-        If ``config.MODEL_TYPE == "distilbert"`` (stub).
-    ValueError
-        If ``config.MODEL_TYPE`` is unrecognised.
-    """
+def create_model(config, vocab_size=None):
+    """Instantiate the model specified in config.MODEL_TYPE."""
     if config.MODEL_TYPE == "lstm_attention":
         if vocab_size is None:
             raise ValueError("vocab_size is required for LSTM models.")

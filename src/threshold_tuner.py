@@ -1,17 +1,14 @@
 """
-Threshold Tuner — finds optimal per-label classification thresholds.
+Threshold Tuner - finds optimal per-label classification thresholds.
 
-For heavily imbalanced labels (e.g. ``threat`` at 1:333 ratio), the
+For heavily imbalanced labels (e.g. threat at 1:333 ratio), the
 default 0.5 decision boundary causes massive false positives or false
-negatives.  This module sweeps thresholds per label and selects the
+negatives. This module sweeps thresholds per label and selects the
 value that maximises F1 while enforcing a minimum precision floor.
 
-Usage (standalone)::
-
+Usage (standalone):
     python -m src.threshold_tuner
 """
-
-from __future__ import annotations
 
 import json
 import logging
@@ -24,7 +21,7 @@ from sklearn.metrics import f1_score, precision_score, recall_score
 
 logger = logging.getLogger(__name__)
 
-# Ensure project root is on sys.path so ``src.*`` imports work in Colab.
+# Ensure project root is on sys.path so src.* imports work in Colab.
 _project_root = Path(__file__).resolve().parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
@@ -39,39 +36,20 @@ from src.model import create_model
 # ===================================================================
 
 def find_optimal_thresholds(
-    y_true: np.ndarray,
-    y_proba: np.ndarray,
-    label_columns: list[str],
-    search_min: float = 0.10,
-    search_max: float = 0.90,
-    step: float = 0.01,
-    min_precision: float = 0.40,
-) -> dict[str, float]:
-    """Find threshold that maximises F1 per label with a precision floor.
-
-    Parameters
-    ----------
-    y_true : np.ndarray
-        Ground-truth binary labels ``(N, C)``.
-    y_proba : np.ndarray
-        Predicted probabilities ``(N, C)``.
-    label_columns : list[str]
-        Label names (length C).
-    search_min, search_max : float
-        Boundaries of the threshold sweep.
-    step : float
-        Increment between candidate thresholds.
-    min_precision : float
-        Minimum acceptable precision.  Candidates below this are
-        rejected to prevent false-positive floods.
-
-    Returns
-    -------
-    dict[str, float]
-        Label name → optimal threshold.
+    y_true,
+    y_proba,
+    label_columns,
+    search_min=0.10,
+    search_max=0.90,
+    step=0.01,
+    min_precision=0.40,
+):
+    """
+    Find threshold that maximises F1 per label with a precision floor.
+    Candidates below min_precision are rejected to prevent false-positive floods.
     """
     candidates = np.arange(search_min, search_max + step / 2, step)
-    thresholds: dict[str, float] = {}
+    thresholds = {}
 
     for i, col in enumerate(label_columns):
         best_f1 = -1.0
@@ -94,7 +72,7 @@ def find_optimal_thresholds(
         thresholds[col] = best_t
         pos = int(y_true[:, i].sum())
         logger.info(
-            "  %-20s → t=%.2f  P=%.3f  R=%.3f  F1=%.4f  (pos=%d)",
+            "  %-20s -> t=%.2f  P=%.3f  R=%.3f  F1=%.4f  (pos=%d)",
             col, best_t, best_p, best_r, best_f1, pos,
         )
 
@@ -102,36 +80,17 @@ def find_optimal_thresholds(
 
 
 def find_precision_optimized_thresholds(
-    y_true: np.ndarray,
-    y_proba: np.ndarray,
-    label_columns: list[str],
-    min_recall: float = 0.70,
-    search_min: float = 0.10,
-    search_max: float = 0.90,
-    step: float = 0.01,
-) -> dict[str, float]:
-    """Find threshold that maximises precision while maintaining recall.
-
-    Parameters
-    ----------
-    y_true : np.ndarray
-        Ground-truth binary labels ``(N, C)``.
-    y_proba : np.ndarray
-        Predicted probabilities ``(N, C)``.
-    label_columns : list[str]
-        Label names.
-    min_recall : float
-        Minimum acceptable recall.
-    search_min, search_max, step : float
-        Sweep boundaries and step size.
-
-    Returns
-    -------
-    dict[str, float]
-        Label name → precision-optimised threshold.
-    """
+    y_true,
+    y_proba,
+    label_columns,
+    min_recall=0.70,
+    search_min=0.10,
+    search_max=0.90,
+    step=0.01,
+):
+    """Find threshold that maximises precision while maintaining recall."""
     candidates = np.arange(search_min, search_max + step / 2, step)
-    thresholds: dict[str, float] = {}
+    thresholds = {}
 
     for i, col in enumerate(label_columns):
         best_p = -1.0
@@ -154,7 +113,7 @@ def find_precision_optimized_thresholds(
         thresholds[col] = best_t
         pos = int(y_true[:, i].sum())
         logger.info(
-            "  %-20s → t=%.2f  P=%.3f  R=%.3f  F1=%.4f  (pos=%d)",
+            "  %-20s -> t=%.2f  P=%.3f  R=%.3f  F1=%.4f  (pos=%d)",
             col, best_t, best_p, best_r, best_f1, pos,
         )
 
@@ -165,16 +124,8 @@ def find_precision_optimized_thresholds(
 # I/O helpers
 # ===================================================================
 
-def save_thresholds(thresholds: dict[str, float], path: str | Path) -> None:
-    """Save thresholds dictionary to a JSON file.
-
-    Parameters
-    ----------
-    thresholds : dict[str, float]
-        Label → threshold mapping.
-    path : str or Path
-        Destination file path.
-    """
+def save_thresholds(thresholds, path):
+    """Save thresholds dictionary to a JSON file."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
@@ -182,19 +133,8 @@ def save_thresholds(thresholds: dict[str, float], path: str | Path) -> None:
     logger.info("[threshold] Thresholds saved to %s", path)
 
 
-def load_thresholds(path: str | Path) -> dict[str, float] | None:
-    """Load thresholds from a JSON file.
-
-    Parameters
-    ----------
-    path : str or Path
-        Path to ``thresholds.json``.
-
-    Returns
-    -------
-    dict[str, float] or None
-        Label → threshold mapping, or ``None`` if file missing.
-    """
+def load_thresholds(path):
+    """Load thresholds from a JSON file."""
     path = Path(path)
     if not path.exists():
         return None
@@ -207,41 +147,18 @@ def load_thresholds(path: str | Path) -> dict[str, float] | None:
 # ===================================================================
 
 def tune_thresholds_from_data(
-    model: torch.nn.Module,
-    dataloader: torch.utils.data.DataLoader,
-    device: torch.device,
-    label_columns: list[str],
-    save_path: str | Path,
-    step: float = 0.01,
-    min_precision: float = 0.40,
-) -> dict[str, float]:
-    """Run model on DataLoader, find optimal thresholds, and save.
-
-    Parameters
-    ----------
-    model : nn.Module
-        Trained model (outputs raw logits).
-    dataloader : DataLoader
-        Validation data loader.
-    device : torch.device
-        Inference device.
-    label_columns : list[str]
-        Label names.
-    save_path : str or Path
-        Where to save ``thresholds.json``.
-    step : float
-        Threshold sweep granularity.
-    min_precision : float
-        Minimum precision floor.
-
-    Returns
-    -------
-    dict[str, float]
-        Optimal thresholds per label.
-    """
+    model,
+    dataloader,
+    device,
+    label_columns,
+    save_path,
+    step=0.01,
+    min_precision=0.40,
+):
+    """Run model on DataLoader, find optimal thresholds, and save."""
     model.eval()
-    all_proba: list[np.ndarray] = []
-    all_true: list[np.ndarray] = []
+    all_proba = []
+    all_true = []
 
     with torch.no_grad():
         for batch in dataloader:
@@ -257,7 +174,7 @@ def tune_thresholds_from_data(
 
     logger.info("")
     logger.info("=" * 60)
-    logger.info("  F1-optimised thresholds (precision ≥ %.2f)", min_precision)
+    logger.info("  F1-optimised thresholds (precision >= %.2f)", min_precision)
     logger.info("=" * 60)
 
     thresholds = find_optimal_thresholds(
@@ -269,7 +186,7 @@ def tune_thresholds_from_data(
     # Also compute precision-optimised thresholds (informational)
     logger.info("")
     logger.info("=" * 60)
-    logger.info("  Precision-optimised thresholds (recall ≥ 0.70)")
+    logger.info("  Precision-optimised thresholds (recall >= 0.70)")
     logger.info("=" * 60)
 
     prec_thresholds = find_precision_optimized_thresholds(
@@ -298,7 +215,7 @@ if __name__ == "__main__":
     logger.info("[threshold_tuner] Device: %s", device)
 
     # Load data (we only need the validation set)
-    logger.info("[threshold_tuner] Loading data…")
+    logger.info("[threshold_tuner] Loading data...")
     _, val_loader, test_loader, vocab = get_data_loaders(config)
 
     # Load trained model
@@ -326,6 +243,6 @@ if __name__ == "__main__":
     logger.info("=" * 60)
     for col in config.LABEL_COLUMNS:
         t = thresholds[col]
-        marker = " ←" if abs(t - 0.5) > 0.1 else ""
-        logger.info("  %-20s : 0.50 → %.2f%s", col, t, marker)
+        marker = " <-" if abs(t - 0.5) > 0.1 else ""
+        logger.info("  %-20s : 0.50 -> %.2f%s", col, t, marker)
     logger.info("=" * 60)

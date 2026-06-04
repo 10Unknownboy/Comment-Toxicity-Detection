@@ -32,11 +32,13 @@
 
 ---
 
+## Problem Statement
+
+Online communities and social media platforms are integral to modern communication, but the prevalence of toxic comments (harassment, hate speech, offensive language) severely impacts healthy discourse. To maintain constructive environments, automated real-time systems are needed to detect and flag toxicity at scale.
+
+The objective of this project is to build a deep learning-based comment toxicity model in Python. The model analyzes online comments and predicts toxicity probabilities, assisting platform moderators in mitigating negative behavior through proactive filtering, warnings, or review processes.
+
 ## Overview
-
-Online platforms face a growing crisis of toxic and abusive comments. From social media feeds to news article discussions, toxic language — including hate speech, threats, obscenity, and identity-based attacks — degrades the quality of public discourse, drives away constructive users, and creates hostile digital environments. Manual moderation is neither scalable nor sustainable for platforms handling millions of comments daily.
-
-Automated content moderation powered by deep learning offers a scalable, consistent, and near-instantaneous solution. By training a neural network on labeled examples of toxic comments, we can build a system that identifies harmful content across multiple toxicity categories simultaneously, enabling proactive moderation before damage is done.
 
 This project implements a **Bidirectional LSTM (BiLSTM)** deep learning model trained on the Jigsaw Toxic Comment Classification dataset to perform **multi-label toxicity classification** across six categories. The trained model is served through an **interactive Streamlit web application** that supports real-time single-comment analysis, bulk CSV prediction, and comprehensive model performance visualization — providing a complete, end-to-end solution for comment toxicity detection.
 
