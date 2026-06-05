@@ -39,7 +39,7 @@ class Config:
         TRAIN_FILE="train.csv",
         
         # ── Model architecture ─────────────────────────────────────
-        MODEL_TYPE="lstm_attention",  # Options: "lstm_attention", "distilbert"
+        MODEL_TYPE="lstm_attention",
         VOCAB_SIZE=50000,
         EMBED_DIM=128,
         HIDDEN_DIM=128,
@@ -188,3 +188,7 @@ def get_default_config():
     config = Config()
     os.makedirs(config.model_path, exist_ok=True)
     return config
+
+
+
+

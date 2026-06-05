@@ -196,3 +196,8 @@ def get_severity_color(score):
         b = int(0x0F + (0x3C - 0x0F) * t)
 
     return f"#{r:02X}{g:02X}{b:02X}"
+
+
+
+
+

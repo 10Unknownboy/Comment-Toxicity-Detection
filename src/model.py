@@ -4,7 +4,6 @@ Model architectures for multi-label toxicity classification.
 Provides:
   - AttentionLayer               - self-attention over LSTM outputs.
   - BiLSTMAttentionClassifier    - BiLSTM + attention (recommended).
-  - DistilBERTClassifier         - stub for future DistilBERT fine-tuning.
   - create_model                 - factory function.
   - ToxicityClassifier           - backwards-compatible alias.
 """
@@ -136,28 +135,6 @@ class BiLSTMAttentionClassifier(nn.Module):
         return out
 
 
-# ===================================================================
-# DistilBERT Classifier (STUB)
-# ===================================================================
-
-class DistilBERTClassifier(nn.Module):
-    """
-    DistilBERT-based multi-label toxicity classifier.
-    This is a stub. For now, create_model will raise NotImplementedError
-    if this model type is requested.
-    """
-
-    def __init__(self, num_labels=6, dropout=0.3):
-        super().__init__()
-        self.num_labels = num_labels
-        raise NotImplementedError(
-            "DistilBERT support is stubbed out.  "
-            "Set MODEL_TYPE = 'lstm_attention' in config.py."
-        )
-
-    def forward(self, input_ids, attention_mask):
-        """Forward pass (not yet implemented)."""
-        raise NotImplementedError
 
 
 # ===================================================================
@@ -193,10 +170,5 @@ def create_model(config, vocab_size=None):
         )
         return model
 
-    if config.MODEL_TYPE == "distilbert":
-        return DistilBERTClassifier(
-            num_labels=config.num_labels,
-            dropout=config.DROPOUT,
-        )
-
     raise ValueError(f"Unknown MODEL_TYPE: {config.MODEL_TYPE!r}")
+

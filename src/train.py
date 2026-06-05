@@ -241,7 +241,7 @@ def train_model(config):
             best_val_auc = val_roc_auc
             patience_counter = 0
             torch.save(model.state_dict(), model_save_path)
-            logger.info("  v Best model saved (val_roc_auc=%.4f)", val_roc_auc)
+            logger.info(" -> Best model saved (val_roc_auc=%.4f)", val_roc_auc)
         else:
             patience_counter += 1
             logger.info(

@@ -279,3 +279,18 @@ def generate_classification_report(
         parts.append(f"\n--- {col.replace('_', ' ').title()} ---\n{report}")
 
     return header + "\n".join(parts)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
